@@ -1,0 +1,313 @@
+---@alias null vim.NIL
+
+---@alias NvimReddit.Thing
+---| NvimReddit.Listing
+---| NvimReddit.Comment
+---| NvimReddit.Link
+
+---@alias NvimReddit.Votable
+---| NvimReddit.Comment
+---| NvimReddit.Link
+
+---@class (exact) NvimReddit.Listing
+---@field data NvimReddit.ListingData
+---@field kind "Listing"
+
+---@class (exact) NvimReddit.Comment
+---@field data NvimReddit.CommentData
+---@field kind "t1"
+
+---@class (exact) NvimReddit.Link
+---@field data NvimReddit.LinkData
+---@field kind "t3"
+
+---@class (exact) NvimReddit.ListingData
+---@field before string | null
+---@field children (NvimReddit.Thing)[]
+---@field dist integer
+---@field after string | null
+
+---@class (exact) NvimReddit.LinkData
+---@field locked boolean
+---@field saved boolean
+---@field send_replies boolean
+---@field contest_mode boolean
+---@field crosspost_parent? string
+---@field name string
+---@field mod_reason_by null
+---@field thumbnail_width integer | null
+---@field author_flair_text string | null
+---@field subreddit string
+---@field media NvimReddit.Media | null
+---@field permalink string
+---@field author_premium boolean
+---@field media_embed NvimReddit.MediaEmbed
+---@field subreddit_type string
+---@field removed_by null
+---@field is_video boolean
+---@field subreddit_name_prefixed string
+---@field archived boolean
+---@field author_patreon_flair boolean
+---@field link_flair_richtext any[]
+---@field is_original_content boolean
+---@field is_gallery? boolean
+---@field awarders any[]
+---@field can_mod_post boolean
+---@field treatment_tags any[]
+---@field banned_by null
+---@field mod_note null
+---@field link_flair_text_color NvimReddit.FlairTextColor | null
+---@field mod_reports any[]
+---@field allow_live_comments boolean
+---@field subreddit_subscribers number
+---@field selftext string
+---@field thumbnail string
+---@field discussion_type null
+---@field gallery_data? NvimReddit.GalleryData
+---@field likes boolean | null
+---@field edited false | number
+---@field over_18 boolean
+---@field upvote_ratio number
+---@field is_meta boolean
+---@field top_awarded_type null
+---@field quarantine boolean
+---@field hide_score boolean
+---@field author_flair_richtext any[]
+---@field score number
+---@field content_categories null
+---@field category null
+---@field suggested_sort string
+---@field visited boolean
+---@field all_awardings unknown[]
+---@field secure_media_embed NvimReddit.MediaEmbed
+---@field approved_by null
+---@field num_comments number
+---@field approved_at_utc null
+---@field gilded number
+---@field mod_reason_title null
+---@field num_reports null
+---@field no_follow boolean
+---@field link_flair_css_class string
+---@field can_gild boolean
+---@field url string
+---@field title string
+---@field author_fullname string
+---@field clicked boolean
+---@field link_flair_type NvimReddit.FlairType
+---@field pwls number
+---@field domain string
+---@field is_crosspostable boolean
+---@field author_is_blocked boolean
+---@field url_overridden_by_dest? string
+---@field secure_media NvimReddit.Media | null
+---@field removed_by_category null
+---@field banned_at_utc null
+---@field author_cakeday? true
+---@field spoiler boolean
+---@field subreddit_id string
+---@field created number
+---@field media_metadata? table<string, NvimReddit.MediaMetadata>
+---@field link_flair_template_id string
+---@field media_only boolean
+---@field hidden boolean
+---@field removal_reason "legal" | null
+---@field selftext_html string | null
+---@field report_reasons null
+---@field author_flair_template_id string | null
+---@field created_utc number
+---@field ups number
+---@field is_reddit_media_domain boolean
+---@field author string
+---@field author_flair_text_color NvimReddit.FlairTextColor | null
+---@field stickied boolean
+---@field author_flair_type NvimReddit.FlairType
+---@field link_flair_text string | null
+---@field num_crossposts number
+---@field gildings NvimReddit.Gildings
+---@field user_reports any[]
+---@field distinguished null
+---@field author_flair_css_class null
+---@field is_created_from_ads_ui boolean
+---@field id string
+---@field is_robot_indexable boolean
+---@field link_flair_background_color string
+---@field wls number
+---@field downs number
+---@field thumbnail_height integer | null
+---@field is_self boolean
+---@field pinned boolean
+---@field total_awards_received number
+---@field author_flair_background_color string | null
+---@field view_count null
+---@field preview? NvimReddit.Preview
+---@field post_hint? string
+
+---@alias (exact) NvimReddit.FlairTextColor
+---| "dark"
+---| "light"
+
+---@alias (exact) NvimReddit.FlairType
+---| "text"
+
+---@class (exact) NvimReddit.GalleryData
+---@field items NvimReddit.GalleryItem[]
+
+---@class (exact) NvimReddit.GalleryItem
+---@field id integer
+---@field media_id string
+---@field caption string | nil
+
+---@class (exact) NvimReddit.Gildings
+-- unknown
+
+---@class (exact) NvimReddit.Media
+---@field reddit_video NvimReddit.RedditVideo | nil
+---@field oembed NvimReddit.Oembed | nil
+---@field type string | nil
+
+---@class (exact) NvimReddit.Oembed
+---@field html string
+---@field height number
+---@field version string
+---@field author_name string
+---@field provider_name string
+---@field thumbnail_height number
+---@field author_url string
+---@field type string
+---@field thumbnail_width number
+---@field width number
+---@field thumbnail_url string
+---@field title string
+---@field provider_url string
+
+---@class (exact) NvimReddit.RedditVideo
+---@field fallback_url string
+---@field has_audio boolean
+---@field is_gif boolean
+---@field transcoding_status string
+---@field scrubber_media_url string
+---@field dash_url string
+---@field duration number
+---@field width number
+---@field hls_url string
+---@field bitrate_kbps number
+---@field height number
+
+---@class (exact) NvimReddit.MediaEmbed
+---@field content string | nil
+---@field width number | nil
+---@field height number | nil
+---@field scrolling boolean | nil
+---@field media_domain_url string | nil
+
+---@class (exact) NvimReddit.MediaMetadata
+---@field status any
+---@field id string
+---@field s any
+---@field e any
+---@field p any[]
+---@field m any
+
+-- haven't checked this, don't need it right now anyway
+-- ---@alias E
+-- ---| "Image"
+--
+-- ---@alias M
+-- ---| "image/jpg"
+-- ---| "image/png"
+--
+-- ---@class S
+-- ---@field u string
+-- ---@field x number
+-- ---@field y number
+--
+-- ---@alias Status
+-- ---| "valid"
+
+---@class (exact) NvimReddit.Preview
+---@field images NvimReddit.RedditImage[]
+---@field enabled boolean
+
+---@class (exact) NvimReddit.RedditImage
+---@field id string
+---@field source NvimReddit.Source
+---@field variants NvimReddit.Gildings
+---@field resolutions NvimReddit.Source[]
+
+---@class (exact) NvimReddit.Source
+---@field url string
+---@field width number
+---@field height number
+
+---@class (exact) NvimReddit.CommentData
+---@field locked boolean
+---@field saved boolean
+---@field send_replies boolean
+---@field associated_award unknown
+---@field collapsed_reason_code unknown
+---@field name string
+---@field mod_reason_by unknown
+---@field controversiality number
+---@field author_flair_text string | null
+---@field subreddit string
+---@field permalink string
+---@field author_premium boolean
+---@field subreddit_type string
+---@field depth number
+---@field unrepliable_reason unknown
+---@field comment_type unknown
+---@field is_submitter boolean
+---@field awarders unknown[]
+---@field can_mod_post boolean
+---@field banned_by unknown
+---@field collapsed boolean
+---@field mod_note unknown
+---@field mod_reports unknown[]
+---@field collapsed_because_crowd_control unknown
+---@field likes boolean | null
+---@field edited false | number
+---@field approved_by unknown
+---@field body_html string
+---@field score number
+---@field all_awardings unknown[]
+---@field top_awarded_type unknown
+---@field score_hidden boolean
+---@field approved_at_utc unknown
+---@field gilded number
+---@field mod_reason_title unknown
+---@field author_patreon_flair boolean
+---@field num_reports unknown
+---@field no_follow boolean
+---@field can_gild boolean
+---@field collapsed_reason unknown
+---@field author_flair_richtext unknown[]
+---@field author_fullname string
+---@field author string
+---@field author_is_blocked boolean
+---@field banned_at_utc unknown
+---@field body string
+---@field treatment_tags unknown[]
+---@field created number
+---@field subreddit_name_prefixed string
+---@field subreddit_id string
+---@field removal_reason "legal" | null
+---@field replies NvimReddit.Listing | ""
+---@field report_reasons unknown
+---@field author_flair_template_id? string
+---@field created_utc number
+---@field ups number
+---@field id string
+---@field author_flair_text_color? string
+---@field stickied boolean
+---@field author_flair_type string
+---@field archived boolean
+---@field gildings NvimReddit.Gildings
+---@field user_reports unknown[]
+---@field distinguished unknown
+---@field author_flair_css_class unknown
+---@field link_id string
+---@field downs number
+---@field parent_id string
+---@field total_awards_received number
+---@field author_flair_background_color string | null
+---@field media_metadata? NvimReddit.MediaMetadata

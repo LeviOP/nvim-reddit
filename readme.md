@@ -1,0 +1,34 @@
+todo:
+- maybe show thumbnails?
+- handle html correctly
+  - handle blockquote element
+  - handle img element
+  - handle inline spoiler
+  - handle sup & sub better
+  - handle pre element
+  - handle table element
+- more configuration
+  - configurable highlights
+  - configurable margins
+  - maybe move refresh token into the correct place.. blehhh
+- handle buffer being open in multiple windows
+- multiple marks for op and stuff
+- show errors onscreen instead of printing (and use vim.notify)
+- make wrapped type for things (for metadata)
+- handle nsfw/spoiler links
+- dedup expando marks
+- fix self.subreddit domains (should link to subreddit apparently)
+- differentiate when `removal_reason` is not null
+- support replying (and posting)
+- differentiate response types / calls like a normal person (booooo)
+- collapse richtext rendering with state table
+  - apparently if some markup ends on the word after a newline the markup isn't applied to the line before
+  - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)
+- indicate whether link is expandable
+- maybe render directly instead of rendering text and shifting it around (luajit is very fast :)
+- show comment depth parenting
+- differentiate deleted links / comments
+- add "hovers" for various stuff
+- support mouse
+- handle `kind: "more"` (and others) correctly
+- handle custom emojis

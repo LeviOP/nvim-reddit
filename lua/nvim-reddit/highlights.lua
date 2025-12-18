@@ -1,0 +1,79 @@
+vim.api.nvim_set_hl(0, "RedditStickied", {
+    foreground = "#228822",
+    bold = true
+})
+
+vim.api.nvim_set_hl(0, "RedditUpvoted", {
+    foreground = "#D93900",
+})
+
+vim.api.nvim_set_hl(0, "RedditDownvoted", {
+    foreground = "#6A5CFF",
+})
+
+vim.api.nvim_set_hl(0, "RedditAnchor", {
+    link = "@markup.link"
+})
+
+vim.api.nvim_set_hl(0, "RedditStrong", {
+    bold = true
+})
+
+vim.api.nvim_set_hl(0, "RedditEm", {
+    italic = true
+})
+
+vim.api.nvim_set_hl(0, "RedditDel", {
+    strikethrough = true,
+    foreground = "#777777"
+})
+
+vim.api.nvim_set_hl(0, "RedditSup", {
+    background = "#00FF00"
+})
+
+vim.api.nvim_set_hl(0, "RedditH1", {
+    bold = true
+})
+
+vim.api.nvim_set_hl(0, "RedditH2", {
+    bold = true
+})
+
+vim.api.nvim_set_hl(0, "RedditH3", {
+    bold = true
+})
+
+vim.api.nvim_set_hl(0, "RedditH4", {
+    bold = true
+})
+
+vim.api.nvim_set_hl(0, "RedditH5", {
+    bold = true
+})
+
+vim.api.nvim_set_hl(0, "RedditH6", {
+    underline = true
+})
+
+vim.api.nvim_set_hl(0, "RedditOP", {
+    foreground = "#FFFFFF",
+    background = "#0055df"
+})
+
+vim.api.nvim_set_hl(0, "RedditSelected", {
+    link = "PmenuSel"
+})
+
+vim.api.nvim_set_hl(0, "RedditFlair", {
+    background = "#000000"
+})
+
+vim.api.nvim_set_hl(0, "RedditSecondary", {
+    foreground = "#aaaaaa",
+    italic = true
+})
+
+vim.api.nvim_set_hl(0, "RedditCode", {
+    background = "#000000"
+})
