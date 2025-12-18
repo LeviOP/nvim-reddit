@@ -7,6 +7,7 @@ local ns = state.ns
 local tns = state.tns
 
 vim.async = require("async")
+---@module "image"
 
 local M = {}
 
@@ -99,83 +100,46 @@ function M.open(path)
         return
     end
 
+    ---@type string|nil
+    local newpath = response.location:match("^https://oauth%.reddit%.com/(.*)$")
+    if not newpath then
+        print("Couldn't get path from response location???", response.location)
+    elseif newpath ~= path then
+        path = newpath
+        vim.schedule(function ()
+            vim.api.nvim_buf_set_name(buffer, "reddit://" .. path)
+        end)
+    end
+
+    local endpoint = util.parse_reddit_endpoint(path)
+
     -- HACK: dev
     local json = response.json
     response.json = nil
 
-    ---@type (NvimReddit.Thing)|((NvimReddit.Thing)[])
-    local result = response.data
-    -- normalize reddit response type to be an array of listings
-    if result.kind ~= nil then
-        result = { result }
-    end
-    -- I'm not sure if this is always the case
-    ---@cast result NvimReddit.Thing[]
-
     vim.schedule(function()
-        ---@type string|nil
-        local newpath = response.location:match("^https://oauth%.reddit%.com/(.*)$")
-        if not newpath then
-            print("Couldn't get path from response location???", response.location)
-        else
-            vim.api.nvim_buf_set_name(buffer, "reddit://" .. newpath)
-        end
-
-        ---@type string[]
-        local lines = {}
-        ---@type NvimReddit.Mark[]
-        local marks = {}
-        ---@type NvimReddit.ThingMark[]
-        local things = {}
-        local line = 0
-        for _, listing in ipairs(result) do
-            if listing.kind ~= "Listing" then
-                print("top level was not a listing?")
-                return
+        if endpoint.type == "listing" then
+            ---@type NvimReddit.Listing
+            local listing = response.data
+            if endpoint.subreddit then
+                listing.show_subreddit = false
+            else
+                listing.show_subreddit = true
             end
-            for _, thing in ipairs(listing.data.children) do
-                local thing_lines, thing_style_marks, thing_marks
-                if thing.kind == "t1" then
-                    thing_lines, thing_style_marks, thing_marks = render.comment(thing, 0, true)
-                elseif thing.kind == "t3" then
-                    thing_lines, thing_style_marks, thing_marks = render.link(thing)
-                else
-                    print("unhandled thing kind!:", thing.kind)
-                    goto continue
-                end
-                for _, thing_line in ipairs(thing_lines) do
-                    table.insert(lines, thing_line)
-                end
-                for _, style_mark in ipairs(thing_style_marks) do
-                    style_mark.line = style_mark.line + line
-                    table.insert(marks, style_mark)
-                end
-                for _, thing_mark in ipairs(thing_marks) do
-                    thing_mark.start_line = thing_mark.start_line + line
-                    table.insert(things, thing_mark)
-                end
-                line = line + #thing_lines
-                table.insert(lines, "")
-                line = line + 1
-                ::continue::
-            end
-        end
+            local lines, marks, things = render.listing(listing)
+            util.draw(reddit_buf, ns, tns, lines, marks, things, 0)
+        elseif endpoint.type == "article" then
+            ---@type NvimReddit.Link
+            local link = response.data[1].data.children[1]
+            ---@type NvimReddit.Listing
+            local comments = response.data[2]
 
-        vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
-        for _, mark in ipairs(marks) do
-            mark.details.end_row = mark.line
-            mark.details.end_col = mark.end_col
-            vim.api.nvim_buf_set_extmark(buffer, ns, mark.line, mark.start_col, mark.details)
+            local lines, marks, things = render.link(link)
+            table.insert(lines, "")
+            util.draw(reddit_buf, ns, tns, lines, marks, things, 0)
+            local c_lines, c_marks, c_things = render.listing(comments, #lines)
+            util.draw(reddit_buf, ns, tns, c_lines, c_marks, c_things, #lines)
         end
-        for _, thing in ipairs(things) do
-            local mark = vim.api.nvim_buf_set_extmark(buffer, tns, thing.start_line, 0, {
-                end_row = thing.start_line + thing.lines,
-                end_col = 0,
-                strict = false
-            })
-            reddit_buf.mark_thing_map[mark] = thing.thing
-        end
-
 
         vim.api.nvim_set_option_value("modifiable", false, { buf = buffer })
         vim.api.nvim_win_set_cursor(0, {1, 0})
@@ -214,27 +178,21 @@ function M.open(path)
 
         -- HACK: dev
         vim.keymap.set("n", "gj", function()
-            -- Format JSON with jq
             local formatted = vim.fn.systemlist("jq .", json)
             if vim.v.shell_error ~= 0 then
                 vim.notify("Failed to format JSON with jq", vim.log.levels.ERROR)
                 return
             end
 
-            -- Create a new normal buffer
             local buf = vim.api.nvim_create_buf(true, true)
             vim.api.nvim_set_option_value("filetype", "json", { buf = buf })
             vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
             vim.api.nvim_set_option_value("swapfile", false, { buf = buf })
-            -- vim.api.nvim_buf_set_name(buf, "Reddit response JSON")
 
-            -- Set the formatted JSON lines
             vim.api.nvim_buf_set_lines(buf, 0, -1, false, formatted)
 
-            -- Switch the current window to the new buffer
             vim.api.nvim_set_current_buf(buf)
         end, { buffer = buffer })
-
     end)
 end
 

@@ -641,15 +641,6 @@ function M.lines(lines)
                     end
                     cur_line = cur_line + #rendered_lines
                     goto out
-                    -- vim.api.nvim_buf_set_lines(buf, linenum, linenum, false, out_lines)
-                    -- for _, mark in ipairs(content_marks) do
-                    --     mark.details.priority = mark.details.priority or 100
-                    --     mark.details.end_row = linenum+mark.line
-                    --     mark.details.end_col = (mark.line == 0 and offset or col)+mark.end_col
-                    --     vim.api.nvim_buf_set_extmark(buf, ns, linenum+mark.line, (mark.line == 0 and offset or col)+mark.start_col, mark.details)
-                    -- end
-                    -- linenum = linenum + #out_lines
-                    -- return linenum
                 end
                 rendered_line = rendered_line .. value
                 if seg.post ~= nil then
@@ -714,7 +705,13 @@ function M.link(thing)
             "submitted",
             util.time_ago(link.created),
             "by",
-            { link.author, mark = { hl_group = "RedditAnchor", url = REDDIT_BASE .. "user/" .. link.author } }
+            { link.author, mark = { hl_group = "RedditAnchor", url = REDDIT_BASE .. "user/" .. link.author } },
+            { "to", condition = thing.show_subreddit },
+            {
+                link.subreddit_name_prefixed,
+                condition = thing.show_subreddit,
+                mark = { hl_group = "RedditAnchor", url = REDDIT_BASE .. link.subreddit_name_prefixed }
+            }
         },
         {
             {
@@ -738,17 +735,15 @@ function M.link(thing)
 end
 
 ---@param thing NvimReddit.Comment
----@param padding integer
 ---@param render_children boolean
 ---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[]
-function M.comment(thing, padding, render_children)
-    thing.padding = padding
+function M.comment(thing, render_children)
     local comment = thing.data
     ---@type Line[]
     local lines = {
         {
             -- FIXME: use padding?
-            { (" "):rep(math.max(padding - 1, 0)), condition = padding ~= 0 },
+            { (" "):rep(math.max(thing.padding - 1, 0)), condition = thing.padding ~= 0 },
             {
                 "󰜷",
                 mark = { hl_group = { "RedditUpvoted", condition = comment.likes == true } }
@@ -768,12 +763,12 @@ function M.comment(thing, padding, render_children)
             }
         },
         {
-            { (" "):rep(math.max(padding - 1, 0)), condition = padding ~= 0 },
+            { (" "):rep(math.max(thing.padding - 1, 0)), condition = thing.padding ~= 0 },
             {
                 "󰜮",
                 mark = { hl_group = { "RedditDownvoted", condition = comment.likes == false } }
             },
-            { comment.body_html, html = padding }
+            { comment.body_html, html = thing.padding }
         }
     }
 
@@ -800,7 +795,8 @@ function M.comment(thing, padding, render_children)
                 goto continue
             end
             table.insert(rendered_lines, "")
-            local child_lines, child_marks, child_things = M.comment(child, padding + 2, true)
+            child.padding = thing.padding + 2
+            local child_lines, child_marks, child_things = M.comment(child, true)
             for _, child_line in ipairs(child_lines) do
                 table.insert(rendered_lines, child_line)
             end
@@ -821,53 +817,52 @@ function M.comment(thing, padding, render_children)
     return rendered_lines, marks, things
 end
 
----@type table<string, fun(thing: NvimReddit.Thing): string[], NvimReddit.Mark[], NvimReddit.ThingMark[]>
-M.KIND_RENDERER_MAP = {
-    t1 = M.comment,
-    t3 = M.link
-}
-
 ---@class NvimReddit.ThingMark
 ---@field thing NvimReddit.Thing
 ---@field start_line integer
 ---@field lines integer
 
--- maybe we still do want to use this..... i don't know
--- ---@param listing Listing
--- ---@return string[], MetaMark[], MetaThing[]
--- function M.listing(listing)
---     ---@type string[]
---     local lines = {}
---     local line = 0
---     ---@type MetaMark[]
---     local marks = {}
---     ---@type MetaThing[]
---     local things = {}
---     for _, thing in ipairs(listing.data.children) do
---         local renderer = M.KIND_RENDERER_MAP[thing.kind]
---         if renderer == nil then
---             print("no renderer for kind:", type)
---             goto continue
---         end
---
---         local thing_lines, thing_style_marks, thing_marks = renderer(thing)
---         for _, block_line in ipairs(thing_lines) do
---             table.insert(lines, block_line)
---         end
---         for _, mark in ipairs(thing_style_marks) do
---             mark.line = mark.line + line
---             table.insert(marks, mark)
---         end
---         for _, thing_mark in ipairs(thing_marks) do
---             thing_mark.start_line = thing_mark.start_line + line
---             table.insert(things, thing_mark)
---         end
---         line = line + #thing_lines
---         table.insert(lines, "")
---         line = line + 1
---         ::continue::
---     end
---     return lines, marks, things
--- end
+---@param listing NvimReddit.Listing
+---@param start_line? integer
+---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[]
+function M.listing(listing, start_line)
+    ---@type string[]
+    local lines = {}
+    ---@type NvimReddit.Mark[]
+    local marks = {}
+    ---@type NvimReddit.ThingMark[]
+    local things = {}
+    local line = start_line or 0
+    for _, thing in ipairs(listing.data.children) do
+        local thing_lines, thing_style_marks, thing_marks
+        if thing.kind == "t1" then
+            thing.padding = 0
+            thing_lines, thing_style_marks, thing_marks = M.comment(thing, true)
+        elseif thing.kind == "t3" then
+            thing.show_subreddit = listing.show_subreddit
+            thing_lines, thing_style_marks, thing_marks = M.link(thing)
+        else
+            print("unhandled thing kind!:", thing.kind)
+            goto continue
+        end
+        for _, thing_line in ipairs(thing_lines) do
+            table.insert(lines, thing_line)
+        end
+        for _, style_mark in ipairs(thing_style_marks) do
+            style_mark.line = style_mark.line + line
+            table.insert(marks, style_mark)
+        end
+        for _, thing_mark in ipairs(thing_marks) do
+            thing_mark.start_line = thing_mark.start_line + line
+            table.insert(things, thing_mark)
+        end
+        line = line + #thing_lines
+        table.insert(lines, "")
+        line = line + 1
+        ::continue::
+    end
+
+    return lines, marks, things
+end
 
 return M

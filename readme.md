@@ -20,7 +20,6 @@ todo:
 - fix self.subreddit domains (should link to subreddit apparently)
 - differentiate when `removal_reason` is not null
 - support replying (and posting)
-- differentiate response types / calls like a normal person (booooo)
 - collapse richtext rendering with state table
   - apparently if some markup ends on the word after a newline the markup isn't applied to the line before
   - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)

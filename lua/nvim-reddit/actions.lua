@@ -28,7 +28,7 @@ local function vote(dir, thing, reddit_buf)
     local row, _, details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true }))
     local thing_lines, thing_style_marks, thing_marks
     if thing.kind == "t1" then
-        thing_lines, thing_style_marks, thing_marks = render.comment(thing, thing.padding, false)
+        thing_lines, thing_style_marks, thing_marks = render.comment(thing, false)
     elseif thing.kind == "t3" then
         thing_lines, thing_style_marks, thing_marks = render.link(thing)
     end
@@ -215,6 +215,17 @@ function M.permalink(thing)
     end
 
     vim.ui.open(REDDIT_BASE .. thing.data.permalink)
+end
+
+---@param thing NvimReddit.Thing
+function M.open_subreddit(thing)
+    if thing.kind ~= "t3" then
+        print("not a link")
+        return
+    end
+    vim.async.run(function()
+        buffer.open(thing.data.subreddit_name_prefixed)
+    end)
 end
 
 return M

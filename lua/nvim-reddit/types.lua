@@ -12,14 +12,17 @@
 ---@class (exact) NvimReddit.Listing
 ---@field data NvimReddit.ListingData
 ---@field kind "Listing"
+---@field show_subreddit boolean|nil
 
 ---@class (exact) NvimReddit.Comment
 ---@field data NvimReddit.CommentData
 ---@field kind "t1"
+---@field padding integer|nil
 
 ---@class (exact) NvimReddit.Link
 ---@field data NvimReddit.LinkData
 ---@field kind "t3"
+---@field show_subreddit boolean|nil
 
 ---@class (exact) NvimReddit.ListingData
 ---@field before string | null

@@ -102,4 +102,73 @@ function M.ensure_dir(path)
     end
 end
 
+---@alias NvimReddit.EndpointType
+---| "listing"
+---| "article"
+
+---@class (exact) NvimReddit.ParsedEndpoint
+---@field type NvimReddit.EndpointType
+---@field subreddit string|nil
+
+---@param path string
+---@return NvimReddit.ParsedEndpoint
+function M.parse_reddit_endpoint(path)
+    if path == "" then
+        return {
+            type = "listing",
+            subreddit = nil,
+        }
+    end
+
+    if not path:match("^/") then
+        path = "/" .. path
+    end
+
+    ---@type string|nil
+    local subreddit = nil
+    ---@type NvimReddit.EndpointType
+    local type = "listing"
+
+    local sub = path:match("^/r/([^/]+)")
+    if sub then
+        subreddit = sub
+        -- Remove the r/subreddit prefix to check what's left
+        path = path:gsub("^/r/[^/]+", "")
+    end
+
+    if path:match("^/comments/") then
+        type = "article"
+    end
+
+    return {
+        type = type,
+        subreddit = subreddit,
+    }
+end
+
+---draw "rendered" (formatted) lines along with their marks to a buffer
+---@param reddit_buf NvimReddit.Buffer
+---@param ns integer
+---@param tns integer
+---@param lines string[]
+---@param marks NvimReddit.Mark[]
+---@param things NvimReddit.ThingMark[]
+---@param line integer
+function M.draw(reddit_buf, ns, tns, lines, marks, things, line)
+    vim.api.nvim_buf_set_lines(reddit_buf.buffer, line, -1, false, lines)
+    for _, mark in ipairs(marks) do
+        mark.details.end_row = mark.line
+        mark.details.end_col = mark.end_col
+        vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, mark.line, mark.start_col, mark.details)
+    end
+    for _, thing in ipairs(things) do
+        local mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, tns, thing.start_line, 0, {
+            end_row = thing.start_line + thing.lines,
+            end_col = 0,
+            strict = false
+        })
+        reddit_buf.mark_thing_map[mark] = thing.thing
+    end
+end
+
 return M

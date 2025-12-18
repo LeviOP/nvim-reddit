@@ -108,6 +108,7 @@ function M.defaults()
             {"n", "c", actions.open_comments},
             {"n", "x", actions.expand},
             {"n", "gp", actions.permalink},
+            {"n", "gs", actions.open_subreddit},
         },
     }
     return defaults
