@@ -14,6 +14,8 @@ todo:
 - handle post types correctly
   - handle galleries
   - handle videos
+- handle user pages
+- re-render images after re-rendering comment or link (from voting)
 - handle buffer being open in multiple windows
 - use style linter
 - handle score digit count being higher than score margin
