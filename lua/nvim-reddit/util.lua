@@ -130,10 +130,14 @@ function M.parse_reddit_endpoint(path)
     local type = "listing"
 
     local sub = path:match("^/r/([^/]+)")
+    local user = path:match("^/user/([^/]+)")
+
     if sub then
         subreddit = sub
-        -- Remove the r/subreddit prefix to check what's left
         path = path:gsub("^/r/[^/]+", "")
+    elseif user then
+        subreddit = "u_" .. user
+        path = path:gsub("^/user/[^/]+", "")
     end
 
     if path:match("^/comments/") then

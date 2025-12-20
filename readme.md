@@ -1,18 +1,22 @@
 todo:
 - write a real readme
-- max width (like with comments) for link body text
 - handle html correctly
   - handle blockquote element
   - handle inline spoiler
   - handle sup better
   - handle pre element
   - handle table element
-- more configuration
+- better configuration
   - configurable highlights
   - configurable margins
   - move refresh token into the correct place.. blehhh
-- handle comment images (`media_metadata`)
+  - type defaults / optionals correctly
+- handle post types correctly
+  - handle galleries
+  - handle videos
 - handle buffer being open in multiple windows
+- use style linter
+- handle score digit count being higher than score margin
 - multiple marks for op and stuff
 - show errors onscreen instead of printing (and use vim.notify)
 - maybe make separate wrapped type for state stored on things to reduce confusion
@@ -25,7 +29,8 @@ todo:
   - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)
 - indicate whether link is expandable
 - maybe render directly instead of rendering text and shifting it around (luajit is very fast :)
-- maybe show thumbnails?
+- maybe show thumbnails? (probably not)
+- maybe do something different with gifs? (we are often provided an mp4, after all)
 - show comment depth parenting
 - differentiate deleted links / comments
 - add "hovers" for various stuff

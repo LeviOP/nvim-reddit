@@ -2,6 +2,7 @@ local render = require("nvim-reddit.render")
 local state = require("nvim-reddit.state")
 local buffer = require("nvim-reddit.buffer")
 local html = require("nvim-reddit.html")
+local config = require("nvim-reddit.config")
 local util = require("nvim-reddit.util")
 
 local ns = state.ns
@@ -19,7 +20,6 @@ local M = {}
 ---@param reddit_buf NvimReddit.Buffer
 local function vote(dir, thing, reddit_buf)
     state.reddit:vote(thing.data.name, dir, function(err)
-        -- FIXME: proper voting errors
         if err then
             print("Error voting: " .. err)
         end
@@ -108,24 +108,58 @@ end
 ---@param thing NvimReddit.Thing
 ---@param reddit_buf NvimReddit.Buffer
 function M.expand(thing, reddit_buf)
-    if thing.kind ~= "t3" then
-        print("not a link")
-        return
-    end
-
-    ---@type _, _, vim.api.keyset.extmark_details
-    local _, _, thing_mark_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true }))
+    ---@type integer, _, vim.api.keyset.extmark_details
+    local thing_mark_start, _, thing_mark_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true }))
     local thing_mark_end = thing_mark_details.end_row
     ---@cast thing_mark_end -? -- we always set it with an end_row so
+
+    if thing.kind == "t1" then
+        if not thing.media then return end
+        if not thing.open then
+            vim.async.run(function()
+                if reddit_buf.images[thing.data.id] == nil then
+                    vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+                    ---@type Image|nil
+                    ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
+                    local image = vim.async.await(3, image_api.from_url, thing.media.url, {
+                        buffer = reddit_buf.buffer,
+                        window = vim.api.nvim_get_current_win(),
+                        with_virtual_padding = true,
+                        height = 20,
+                        render_offset_top = config.render_offset_top
+                    })
+                    if image == nil then
+                        print("image was nil?!?!")
+                        return
+                    end
+
+                    reddit_buf.images[thing.data.id] = image
+                end
+
+                reddit_buf.images[thing.data.id]:render({
+                    y = thing_mark_start + thing.media.line,
+                    x = thing.padding + 5
+                })
+                thing.open = true
+            end)
+        else
+            reddit_buf.images[thing.data.id]:clear()
+            reddit_buf.images[thing.data.id] = nil
+            thing.open = false
+        end
+        return
+    end
 
     vim.async.run(function()
         local line_num = 0
         local hint = thing.data.post_hint
         vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
         if not thing.open then
+            local margin = config.spacing.score_margin + 1
             if hint then
                 if hint == "image" then
                     if reddit_buf.images[thing.data.id] == nil then
+                        -- disable while async
                         vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
                         ---@type Image|nil
                         ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
@@ -133,7 +167,8 @@ function M.expand(thing, reddit_buf)
                             buffer = reddit_buf.buffer,
                             window = vim.api.nvim_get_current_win(),
                             with_virtual_padding = true,
-                            height = 20
+                            height = 20,
+                            render_offset_top = config.render_offset_top,
                         })
                         if image == nil then
                             print("image was nil?!?!")
@@ -141,24 +176,24 @@ function M.expand(thing, reddit_buf)
                         end
 
                         reddit_buf.images[thing.data.id] = image
+                        -- re-enable after async
                         vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
                     end
 
-                    vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {""})
                     reddit_buf.images[thing.data.id]:render({
-                        y = thing_mark_end
+                        y = thing_mark_end - 1,
+                        x = margin
                     })
-                    line_num = line_num + 1
                     ::exit::
                 elseif hint ~= "link" and hint ~= "self" then
-                    vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {"<" .. hint .. ">"})
+                    vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. "<" .. hint .. ">"})
                     line_num = line_num + 1
                 end
             elseif thing.data.is_gallery then
-                vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {"<gallery>"})
+                vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. "<gallery>"})
                 line_num = line_num + 1
             elseif thing.data.crosspost_parent then
-                vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {"<crosspost>"})
+                vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. "<crosspost>"})
                 line_num = line_num + 1
             end
 
@@ -171,21 +206,18 @@ function M.expand(thing, reddit_buf)
 
                 local width = util.get_window_text_width(0)
 
-                local lines, marks = render.blocks(thing.parsed, width)
+                local lines, marks = render.blocks(thing.parsed, math.min(width, config.spacing.max_line_length) - margin)
+                for i, v in ipairs(lines) do
+                    lines[i] = (" "):rep(margin) .. v
+                end
                 vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end+line_num, thing_mark_end+line_num, false, lines)
                 for _, mark in ipairs(marks) do
                     mark.details.priority = mark.details.priority or 100
                     mark.details.end_row = thing_mark_end+line_num+mark.line
-                    mark.details.end_col = mark.end_col
-                    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end+line_num+mark.line, mark.start_col, mark.details)
+                    mark.details.end_col = mark.end_col+margin
+                    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end+line_num+mark.line, mark.start_col+margin, mark.details)
                 end
                 line_num = line_num + #lines
-            end
-
-            -- we've done nothing!
-            if line_num == 0 then
-                vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
-                return
             end
 
             thing.expando_mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end, 0, {
@@ -209,11 +241,6 @@ end
 
 ---@param thing NvimReddit.Thing
 function M.permalink(thing)
-    if thing.kind ~= "t1" then
-        print("not a comment")
-        return
-    end
-
     vim.ui.open(REDDIT_BASE .. thing.data.permalink)
 end
 

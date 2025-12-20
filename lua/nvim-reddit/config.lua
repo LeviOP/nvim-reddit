@@ -1,10 +1,16 @@
 local util = require("nvim-reddit.util")
 
+---@class NvimReddit.SpacingConfig
+---@field score_margin integer
+---@field max_line_length integer
+
 ---@class NvimReddit.Config
----@field data_dir? string
----@field platform_resolver? fun(): string
+---@field data_dir string
+---@field platform_resolver fun(): string
 ---@field port integer
 ---@field keymaps NvimReddit.Keymap[]
+---@field spacing NvimReddit.SpacingConfig
+---@field render_offset_top integer
 local M = {}
 
 ---@alias NvimReddit.Keymap { [1]: string, [2]: string, [3]: fun(thing: NvimReddit.Thing, reddit_buf: NvimReddit.Buffer) }
@@ -109,7 +115,13 @@ function M.defaults()
             {"n", "x", actions.expand},
             {"n", "gp", actions.permalink},
             {"n", "gs", actions.open_subreddit},
+            {"n", "gl", function(thing) vim.print(thing) end}
         },
+        spacing = {
+            score_margin = 6,
+            max_line_length = 120
+        },
+        render_offset_top = 0
     }
     return defaults
 end

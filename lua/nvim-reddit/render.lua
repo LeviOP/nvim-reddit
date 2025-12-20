@@ -1,10 +1,9 @@
 local util = require("nvim-reddit.util")
 local html = require("nvim-reddit.html")
+local config = require("nvim-reddit.config")
 local M = {}
 
 local LIST_PADDING = 4
-local MAX_LINE_WIDTH = 120
-local MARGIN = 6
 local REDDIT_BASE = "https://www.reddit.com/"
 
 -- This function is laid out in kind of a stupid way to make lsp work
@@ -623,7 +622,7 @@ function M.lines(lines)
                     local width = util.get_window_text_width(0)
                     local blocks = html.parse(html.decode(seg[1]))
                     local col = vim.fn.strdisplaywidth(rendered_line)
-                    local content_lines, content_marks = M.blocks(blocks, math.min(width - col, MAX_LINE_WIDTH))
+                    local content_lines, content_marks = M.blocks(blocks, math.min(width - col, config.spacing.max_line_length))
                     for i, content_line in ipairs(content_lines) do
                         if i == 1 then
                             table.insert(rendered_lines, rendered_line .. content_line)
@@ -683,7 +682,7 @@ function M.link(thing)
         {
             {
                 "󰜷",
-                padding = MARGIN,
+                padding = config.spacing.score_margin,
                 mark = { hl_group = { "RedditUpvoted", condition = link.likes == true } }
             },
             {
@@ -699,7 +698,7 @@ function M.link(thing)
         {
             {
                 link.score,
-                padding = MARGIN,
+                padding = config.spacing.score_margin,
                 mark = { hl_group = { link.likes and "RedditUpvoted" or "RedditDownvoted", condition = link.likes ~= vim.NIL } }
             },
             "submitted",
@@ -716,7 +715,7 @@ function M.link(thing)
         {
             {
                 "󰜮",
-                padding = MARGIN,
+                padding = config.spacing.score_margin,
                 mark = { hl_group = { "RedditDownvoted", condition = link.likes == false } }
             },
             { link.num_comments .. " comments", mark = { url = REDDIT_BASE .. link.permalink:sub(2) } }
@@ -782,6 +781,47 @@ function M.comment(thing, render_children)
         thing = thing
     }}
 
+    local media_metadata = thing.data.media_metadata
+    if media_metadata then
+        for _, media in pairs(media_metadata) do
+            ---@type string
+            if media.e == "Image" then
+                for _, mark in ipairs(marks) do
+                    ---@type string|nil
+                    local url = mark.details.url
+                    if url and url == html.decode(media.s.u) then
+                        thing.media = {
+                            url = html.decode(media.s.u),
+                            line = mark.line
+                        }
+                        -- This is a super duper hack. Doing it in any other way would be way more
+                        -- annoying, though. Might cause issues down the line :)
+                        local line = rendered_lines[mark.line + 1]
+                        rendered_lines[mark.line + 1] = line:sub(1, mark.start_col) .. "<image>"
+                        mark.end_col = mark.start_col + 7 -- length of "<image>"
+
+                        goto found
+                    end
+                end
+            elseif media.e == "AnimatedImage" then
+                for _, mark in ipairs(marks) do
+                    ---@type string|nil
+                    local url = mark.details.url
+                    if url and url == media.ext then
+                        thing.media = {
+                            url = html.decode(media.s.gif),
+                            line = mark.line,
+                        }
+                        goto found
+                    end
+                end
+            else
+                print("Unkown media type:", media.e)
+            end
+        end
+        ::found::
+    end
+
     if type(comment.replies) == "table" and render_children then
         if comment.replies.kind ~= "Listing" then
             print("Why aren't the replies a listing!??!!!!")
@@ -817,7 +857,11 @@ function M.comment(thing, render_children)
     return rendered_lines, marks, things
 end
 
----@class NvimReddit.ThingMark
+---@class (exact) NvimReddit.Image
+---@field url string
+---@field line integer
+
+---@class (exact) NvimReddit.ThingMark
 ---@field thing NvimReddit.Thing
 ---@field start_line integer
 ---@field lines integer

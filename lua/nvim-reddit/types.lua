@@ -18,6 +18,8 @@
 ---@field data NvimReddit.CommentData
 ---@field kind "t1"
 ---@field padding integer|nil
+---@field media NvimReddit.Image|nil
+---@field open boolean|nil
 
 ---@class (exact) NvimReddit.Link
 ---@field data NvimReddit.LinkData
@@ -44,7 +46,7 @@
 ---@field thumbnail_width integer | null
 ---@field author_flair_text string | null
 ---@field subreddit string
----@field media NvimReddit.Media | null
+---@field media NvimReddit.MediaData | null
 ---@field permalink string
 ---@field author_premium boolean
 ---@field media_embed NvimReddit.MediaEmbed
@@ -112,7 +114,7 @@
 ---@field spoiler boolean
 ---@field subreddit_id string
 ---@field created number
----@field media_metadata? table<string, NvimReddit.MediaMetadata>
+---@field media_metadata? table<string, NvimReddit.Media>
 ---@field link_flair_template_id string
 ---@field media_only boolean
 ---@field hidden boolean
@@ -166,7 +168,7 @@
 ---@class (exact) NvimReddit.Gildings
 -- unknown
 
----@class (exact) NvimReddit.Media
+---@class (exact) NvimReddit.MediaData
 ---@field reddit_video NvimReddit.RedditVideo | nil
 ---@field oembed NvimReddit.Oembed | nil
 ---@field type string | nil
@@ -206,41 +208,27 @@
 ---@field scrolling boolean | nil
 ---@field media_domain_url string | nil
 
----@class (exact) NvimReddit.MediaMetadata
----@field status any
+---@class (exact) NvimReddit.Media
+---@field status string
+---@field e string
+---@field m string
+---@field ext? string
+---@field p table[]
+---@field s table
+---@field t? string
 ---@field id string
----@field s any
----@field e any
----@field p any[]
----@field m any
-
--- haven't checked this, don't need it right now anyway
--- ---@alias E
--- ---| "Image"
---
--- ---@alias M
--- ---| "image/jpg"
--- ---| "image/png"
---
--- ---@class S
--- ---@field u string
--- ---@field x number
--- ---@field y number
---
--- ---@alias Status
--- ---| "valid"
 
 ---@class (exact) NvimReddit.Preview
----@field images NvimReddit.RedditImage[]
+---@field images NvimReddit.PreviewImage[]
 ---@field enabled boolean
 
----@class (exact) NvimReddit.RedditImage
+---@class (exact) NvimReddit.PreviewImage
 ---@field id string
----@field source NvimReddit.Source
+---@field source NvimReddit.PreviewImageSource
 ---@field variants NvimReddit.Gildings
----@field resolutions NvimReddit.Source[]
+---@field resolutions NvimReddit.PreviewImageSource[]
 
----@class (exact) NvimReddit.Source
+---@class (exact) NvimReddit.PreviewImageSource
 ---@field url string
 ---@field width number
 ---@field height number
@@ -316,4 +304,4 @@
 ---@field parent_id string
 ---@field total_awards_received number
 ---@field author_flair_background_color string | null
----@field media_metadata? NvimReddit.MediaMetadata
+---@field media_metadata? table<string, NvimReddit.Media>

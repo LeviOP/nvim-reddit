@@ -211,6 +211,7 @@ function Reddit:vote(fullname, dir, cb)
             dir = dir
         },
         callback = function(res)
+            local ok, result = pcall(vim.json.decode, res.body)
             if res.status ~= 200 then
                 cb("HTTP " .. res.status)
                 return
