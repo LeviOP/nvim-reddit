@@ -141,7 +141,6 @@ function M.expand(thing, reddit_buf)
                         end
 
                         reddit_buf.images[thing.data.id] = image
-                        -- thing.image = image
                         vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
                     end
 
@@ -190,6 +189,7 @@ function M.expand(thing, reddit_buf)
             end
 
             thing.expando_mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end, 0, {
+                id = thing.expando_mark,
                 end_row = thing_mark_end+line_num
             })
 

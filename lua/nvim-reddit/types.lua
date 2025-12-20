@@ -23,6 +23,9 @@
 ---@field data NvimReddit.LinkData
 ---@field kind "t3"
 ---@field show_subreddit boolean|nil
+---@field parsed NvimReddit.Block[]|nil
+---@field expando_mark integer|nil
+---@field open boolean|nil
 
 ---@class (exact) NvimReddit.ListingData
 ---@field before string | null

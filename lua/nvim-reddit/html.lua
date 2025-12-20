@@ -105,9 +105,15 @@ function M.parse_inner(element, source)
             -- ol and ul will not be in normal paragraphs, and we want to ignore them when we
             -- use this function to parse list elements with a single paragraph (implicit,
             -- no p element surrounding it) but with an ending sublist element
-            if element_name == "ol" or element_name == "ul" or element_name == "img" then
+            if element_name == "ol" or element_name == "ul" then
                 goto continue
             end
+
+            if element_name == "img" then
+                table.insert(stream, "<gif>")
+                goto continue
+            end
+
             ---@type string?
             local extra = nil
             if element_name == "a" then
@@ -206,7 +212,7 @@ function M.parse_list(element, source)
     }
 end
 
----@class Block
+---@class NvimReddit.Block
 ---@field type string
 ---@field content any
 
@@ -216,7 +222,7 @@ end
 
 ---Parse an html string into a series of markdown "blocks"
 ---@param html string
----@return Block[]
+---@return NvimReddit.Block[]
 function M.parse(html)
     local parser = vim.treesitter.get_string_parser(html, "html")
     local tree = parser:parse(true)[1]
@@ -229,7 +235,7 @@ function M.parse(html)
         end
     end
 
-    ---@type Block[]
+    ---@type NvimReddit.Block[]
     local blocks = {}
 
     for i = 1, container:child_count() - 2 do
@@ -252,6 +258,7 @@ function M.parse(html)
                 opening = false,
                 type = name
             })
+
             table.insert(blocks, {
                 type = "richtext",
                 content = richtext

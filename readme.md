@@ -1,22 +1,22 @@
 todo:
-- maybe show thumbnails?
+- write a real readme
+- max width (like with comments) for link body text
 - handle html correctly
   - handle blockquote element
-  - handle img element
   - handle inline spoiler
-  - handle sup & sub better
+  - handle sup better
   - handle pre element
   - handle table element
 - more configuration
   - configurable highlights
   - configurable margins
-  - maybe move refresh token into the correct place.. blehhh
+  - move refresh token into the correct place.. blehhh
+- handle comment images (`media_metadata`)
 - handle buffer being open in multiple windows
 - multiple marks for op and stuff
 - show errors onscreen instead of printing (and use vim.notify)
-- make wrapped type for things (for metadata)
+- maybe make separate wrapped type for state stored on things to reduce confusion
 - handle nsfw/spoiler links
-- dedup expando marks
 - fix self.subreddit domains (should link to subreddit apparently)
 - differentiate when `removal_reason` is not null
 - support replying (and posting)
@@ -25,6 +25,7 @@ todo:
   - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)
 - indicate whether link is expandable
 - maybe render directly instead of rendering text and shifting it around (luajit is very fast :)
+- maybe show thumbnails?
 - show comment depth parenting
 - differentiate deleted links / comments
 - add "hovers" for various stuff

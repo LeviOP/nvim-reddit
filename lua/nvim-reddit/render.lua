@@ -496,7 +496,7 @@ local TYPE_RENDERER_MAP = {
 }
 
 ---Render an array of blocks
----@param blocks Block[]
+---@param blocks NvimReddit.Block[]
 ---@param width integer
 ---@return string[], NvimReddit.Mark[]
 function M.blocks(blocks, width)
