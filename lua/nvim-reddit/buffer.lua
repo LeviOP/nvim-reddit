@@ -13,7 +13,7 @@ local M = {}
 
 ---@class (exact) NvimReddit.Buffer
 ---@field buffer integer
----@field mark_thing_map table<integer, NvimReddit.Thing>
+---@field mark_thing_map table<integer, NvimReddit.Selectable>
 ---@field selected_mark_id integer|nil
 ---@field images table<string, Image>
 
@@ -121,12 +121,7 @@ function M.open(path)
         if endpoint.type == "listing" then
             ---@type NvimReddit.Listing
             local listing = response.data
-            if endpoint.subreddit then
-                listing.show_subreddit = false
-            else
-                listing.show_subreddit = true
-            end
-            local lines, marks, things = render.listing(listing)
+            local lines, marks, things = render.listing(listing, endpoint)
             util.draw(reddit_buf, ns, tns, lines, marks, things, 0)
         elseif endpoint.type == "article" then
             ---@type NvimReddit.Link
@@ -137,7 +132,7 @@ function M.open(path)
             local lines, marks, things = render.link(link)
             table.insert(lines, "")
             util.draw(reddit_buf, ns, tns, lines, marks, things, 0)
-            local c_lines, c_marks, c_things = render.listing(comments, #lines)
+            local c_lines, c_marks, c_things = render.listing(comments, endpoint, #lines)
             util.draw(reddit_buf, ns, tns, c_lines, c_marks, c_things, #lines)
         end
 

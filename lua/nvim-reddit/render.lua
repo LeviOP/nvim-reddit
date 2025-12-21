@@ -862,14 +862,15 @@ end
 ---@field line integer
 
 ---@class (exact) NvimReddit.ThingMark
----@field thing NvimReddit.Thing
+---@field thing NvimReddit.Selectable
 ---@field start_line integer
 ---@field lines integer
 
 ---@param listing NvimReddit.Listing
+---@param endpoint NvimReddit.ParsedEndpoint
 ---@param start_line? integer
 ---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[]
-function M.listing(listing, start_line)
+function M.listing(listing, endpoint, start_line)
     ---@type string[]
     local lines = {}
     ---@type NvimReddit.Mark[]
@@ -883,7 +884,7 @@ function M.listing(listing, start_line)
             thing.padding = 0
             thing_lines, thing_style_marks, thing_marks = M.comment(thing, true)
         elseif thing.kind == "t3" then
-            thing.show_subreddit = listing.show_subreddit
+            thing.show_subreddit = endpoint.subreddit ~= thing.data.subreddit
             thing_lines, thing_style_marks, thing_marks = M.link(thing)
         else
             print("unhandled thing kind!:", thing.kind)

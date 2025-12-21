@@ -11,7 +11,8 @@ local tns = state.tns
 local image_api = require("image")
 vim.async = require("async")
 
-local REDDIT_BASE = "https://www.reddit.com/"
+-- This is different than other files! includes a trailing slash. unify at some point
+local REDDIT_BASE = "https://www.reddit.com"
 
 local M = {}
 
@@ -52,12 +53,13 @@ local function vote(dir, thing, reddit_buf)
     vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
 end
 
----@param thing NvimReddit.Thing
+---@param thing NvimReddit.Selectable
 ---@param reddit_buf NvimReddit.Buffer
 function M.upvote(thing, reddit_buf)
-    if thing.kind ~= "t1" and thing.kind ~= "t3" then
-        return
-    end ---@cast thing NvimReddit.Votable
+    -- NvimReddit.Selectable and NvimReddit.Votable are the same right now, but they aren't always
+    -- if thing.kind ~= "t1" and thing.kind ~= "t3" then
+    --     return
+    -- end ---@cast thing NvimReddit.Votable
 
     local dir
     if thing.data.likes == true then
@@ -73,12 +75,13 @@ function M.upvote(thing, reddit_buf)
     vote(dir, thing, reddit_buf)
 end
 
----@param thing NvimReddit.Thing
+---@param thing NvimReddit.Selectable
 ---@param reddit_buf NvimReddit.Buffer
 function M.downvote(thing, reddit_buf)
-    if thing.kind ~= "t1" and thing.kind ~= "t3" then
-        return
-    end ---@cast thing NvimReddit.Votable
+    -- NvimReddit.Selectable and NvimReddit.Votable are the same right now, but they aren't always
+    -- if thing.kind ~= "t1" and thing.kind ~= "t3" then
+    --     return
+    -- end ---@cast thing NvimReddit.Votable
 
     local dir
     if thing.data.likes == false then
@@ -94,7 +97,7 @@ function M.downvote(thing, reddit_buf)
     vote(dir, thing, reddit_buf)
 end
 
----@param thing NvimReddit.Thing
+---@param thing NvimReddit.Selectable
 function M.open_comments(thing)
     if thing.kind ~= "t3" then
         print("not a link")
@@ -105,7 +108,7 @@ function M.open_comments(thing)
     end)
 end
 
----@param thing NvimReddit.Thing
+---@param thing NvimReddit.Selectable
 ---@param reddit_buf NvimReddit.Buffer
 function M.expand(thing, reddit_buf)
     ---@type integer, _, vim.api.keyset.extmark_details
@@ -239,19 +242,22 @@ function M.expand(thing, reddit_buf)
     end)
 end
 
----@param thing NvimReddit.Thing
+---@param thing NvimReddit.Selectable
 function M.permalink(thing)
     vim.ui.open(REDDIT_BASE .. thing.data.permalink)
 end
 
----@param thing NvimReddit.Thing
+---@param thing NvimReddit.Selectable
 function M.open_subreddit(thing)
-    if thing.kind ~= "t3" then
-        print("not a link")
-        return
-    end
     vim.async.run(function()
         buffer.open(thing.data.subreddit_name_prefixed)
+    end)
+end
+
+---@param thing NvimReddit.Selectable
+function M.open_user(thing)
+    vim.async.run(function()
+        buffer.open("user/" .. thing.data.author)
     end)
 end
 

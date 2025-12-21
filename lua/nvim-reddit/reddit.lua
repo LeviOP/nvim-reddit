@@ -117,14 +117,13 @@ function Reddit:get_access_token(cb)
     else
         local state = tostring(math.random(1, 1e9))
         local url = string.format(
-            "https://www.reddit.com/api/v1/authorize?client_id=%s&response_type=code&state=%s&redirect_uri=%s&duration=permanent&scope=read,identity,vote",
+            "https://www.reddit.com/api/v1/authorize?client_id=%s&response_type=code&state=%s&redirect_uri=%s&duration=permanent&scope=read,identity,vote,history",
             self.client_id, state, self.redirect_uri
         )
 
         vim.ui.open(url)
 
         self:wait_for_code(state, config.port, function(code)
-            print("got code!: " .. code)
             self:retrieve_access_token(code, function(token)
                 self.token = token
                 cb()
@@ -168,6 +167,10 @@ function Reddit:fetch(path, cb)
                 })
                 return
             end
+
+            -- vim.schedule(function()
+            --     vim.fn.writefile({res.body}, "/home/levi/.local/share/nvim/reddit_sample.json")
+            -- end)
 
             if res.status == 302 then
                 for _, line in ipairs(res.headers) do

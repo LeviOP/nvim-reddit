@@ -9,6 +9,10 @@
 ---| NvimReddit.Comment
 ---| NvimReddit.Link
 
+---@alias NvimReddit.Selectable
+---| NvimReddit.Comment
+---| NvimReddit.Link
+
 ---@class (exact) NvimReddit.Listing
 ---@field data NvimReddit.ListingData
 ---@field kind "Listing"

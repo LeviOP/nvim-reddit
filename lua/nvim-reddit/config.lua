@@ -13,7 +13,7 @@ local util = require("nvim-reddit.util")
 ---@field render_offset_top integer
 local M = {}
 
----@alias NvimReddit.Keymap { [1]: string, [2]: string, [3]: fun(thing: NvimReddit.Thing, reddit_buf: NvimReddit.Buffer) }
+---@alias NvimReddit.Keymap { [1]: string, [2]: string, [3]: fun(thing: NvimReddit.Selectable, reddit_buf: NvimReddit.Buffer) }
 
 local VERSION = "v0.0.1"
 
@@ -115,7 +115,8 @@ function M.defaults()
             {"n", "x", actions.expand},
             {"n", "gp", actions.permalink},
             {"n", "gs", actions.open_subreddit},
-            {"n", "gl", function(thing) vim.print(thing) end}
+            {"n", "gl", function(thing) vim.print(thing) end},
+            {"n", "gu", actions.open_user}
         },
         spacing = {
             score_margin = 6,
