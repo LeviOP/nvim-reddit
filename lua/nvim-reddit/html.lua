@@ -76,18 +76,18 @@ function M.get_element_info(element, source)
     return tag_name_text, attrs
 end
 
----@class RichTextCommand
+---@class NvimReddit.RichTextCommand
 ---@field opening boolean
 ---@field type string
 ---@field extra string?
 
----@alias RichText (string|RichTextCommand)[]
+---@alias NvimReddit.RichText (string|NvimReddit.RichTextCommand)[]
 
 ---@param element TSNode
 ---@param source string
----@return RichText
+---@return NvimReddit.RichText
 function M.parse_inner(element, source)
-    --- @type RichText
+    --- @type NvimReddit.RichText
     local stream = {}
     for node in M.iter_element_child_nodes(element, source) do
         if type(node) == "string" then
@@ -143,7 +143,7 @@ end
 ---@field items ListItem[]
 
 ---@class ListItem
----@field content RichText[]
+---@field content NvimReddit.RichText[]
 ---@field sublist List?
 
 ---@param element TSNode
@@ -268,6 +268,27 @@ function M.parse(html)
             table.insert(blocks, {
                 type = "list",
                 content = list
+            })
+        elseif name == "blockquote" then
+            -- assuming that blockquote elements always have a single child paragraph
+            local paragraph = element:child(1) ---@cast paragraph -?
+            local richtext = M.parse_inner(paragraph, html)
+            table.insert(richtext, 1, {
+                opening = true,
+                type = "blockquote"
+            })
+            table.insert(richtext, {
+                opening = false,
+                type = "blockquote"
+            })
+
+            table.insert(blocks, {
+                type = "blockquote",
+                content = richtext
+            })
+        elseif name == "hr" then
+            table.insert(blocks, {
+                type = "hr"
             })
         else
             print("we don't support this element:", name)

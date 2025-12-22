@@ -64,6 +64,10 @@ local function inline_to_details(type, extra)
         details = {
             hl_group = "RedditSup"
         }
+    elseif type == "blockquote" then
+        details = {
+            hl_group = "RedditBlockquote"
+        }
     else
         print("we don't handle this element:", type)
         details = {}
@@ -78,7 +82,7 @@ end
 ---@field start_col integer
 ---@field end_col integer
 
----@param richtext RichText
+---@param richtext NvimReddit.RichText
 ---@param width integer
 ---@return string[], NvimReddit.Mark[]
 function M.richtext(richtext, width)
@@ -90,7 +94,7 @@ function M.richtext(richtext, width)
     ---@type ({ type: string, extra: string?, line: integer, col: integer })[]
     local open = {}
     local current = ""
-    ---@type ({ word: string, commands: RichTextCommand[] })[]
+    ---@type ({ word: string, commands: NvimReddit.RichTextCommand[] })[]
     local word_carry = {}
 
     for _, seg in ipairs(richtext) do
@@ -488,10 +492,47 @@ function M.list(list, width)
     return lines, marks
 end
 
+---@param richtext NvimReddit.RichText
+---@param width integer
+---@return string[], NvimReddit.Mark[]
+function M.blockquote(richtext, width)
+    -- FIXME: make this configurable and only calculated once
+    local pad = "┃ "
+    local pad_bytes = pad:len()
+    local pad_width = vim.fn.strdisplaywidth(pad)
+    local lines, marks = M.richtext(richtext, width - pad_width)
+    for _, mark in ipairs(marks) do
+        mark.start_col = mark.start_col + pad_bytes
+        mark.end_col = mark.end_col + pad_bytes
+    end
+    for i, line in ipairs(lines) do
+        lines[i] = pad .. line
+        table.insert(marks, {
+            details = {
+                priority = 200,
+                hl_group = "RedditBlockquotePad"
+            },
+            line = i - 1,
+            start_col = 0,
+            end_col = pad_bytes
+        })
+    end
+    return lines, marks
+end
+
+---@param _ nil
+---@param width integer
+---@return string[], NvimReddit.Mark[]
+function M.hr(_, width)
+    return {("━"):rep(width)}, {}
+end
+
 ---@type table<string, fun(contents: any, width: integer): string[], NvimReddit.Mark[]>
 local TYPE_RENDERER_MAP = {
     richtext = M.richtext,
-    list = M.list
+    list = M.list,
+    blockquote = M.blockquote,
+    hr = M.hr
 }
 
 ---Render an array of blocks
@@ -591,7 +632,7 @@ function M.lines(lines)
                 rendered_line = rendered_line .. " "
             end
             local offset = rendered_line:len()
-            if is_table then ---@cast seg LineSegmentTable|LineSegmentHTML
+            if is_table then ---@cast seg LineSegmentTable|LineSegmentMDHTML
                 if seg.padding then
                     local cols = vim.fn.strdisplaywidth(value)
                     local padding = math.max(seg.padding - cols, 0)
@@ -618,7 +659,7 @@ function M.lines(lines)
                         })
                     end
                 end
-                if seg.html ~= nil then ---@cast seg LineSegmentHTML
+                if seg.mdhtml == true then ---@cast seg LineSegmentMDHTML
                     local width = util.get_window_text_width(0)
                     local blocks = html.parse(html.decode(seg[1]))
                     local col = vim.fn.strdisplaywidth(rendered_line)
@@ -659,9 +700,9 @@ end
 
 ---@alias LineMark table<string, LineConditional>
 
----@class LineSegmentHTML
+---@class LineSegmentMDHTML
 ---@field [1] string
----@field html integer
+---@field mdhtml true
 
 ---@class LineSegmentTable
 ---@field [1] string|number|fun(): string
@@ -670,7 +711,7 @@ end
 ---@field padding number?
 ---@field mark LineMark?
 
----@alias LineSegment LineSegmentTable|LineSegmentHTML|string
+---@alias LineSegment LineSegmentTable|LineSegmentMDHTML|string
 ---@alias Line (LineSegment)[] -- parentheses so that type expansion doesn't look confusing
 
 ---@param thing NvimReddit.Link
@@ -767,7 +808,7 @@ function M.comment(thing, render_children)
                 "󰜮",
                 mark = { hl_group = { "RedditDownvoted", condition = comment.likes == false } }
             },
-            { comment.body_html, html = thing.padding }
+            { comment.body_html, mdhtml = true }
         }
     }
 
@@ -855,6 +896,23 @@ function M.comment(thing, render_children)
     end
 
     return rendered_lines, marks, things
+end
+
+---@param thing NvimReddit.Subreddit
+---@return string[], NvimReddit.Mark[]
+function M.sidebar(thing)
+    local subreddit = thing.data
+    ---@type Line[]
+    local lines = {
+        -- maybe .url should be used instead? this is just more convenient
+        { { subreddit.display_name, mark = { hl_group = "RedditH1", url = REDDIT_BASE .. subreddit.display_name_prefixed } } },
+        { { subreddit.description_html, mdhtml = true, condition = subreddit.description_html ~= vim.NIL } },
+        -- HACK: add actual hr instead of just replicating markdown html
+        { { "<div><hr></div>" , mdhtml = true } },
+        { { "a community for " .. util.time_since(subreddit.created_utc) } }
+    }
+    local rendered_lines, marks = M.lines(lines)
+    return rendered_lines, marks
 end
 
 ---@class (exact) NvimReddit.Image

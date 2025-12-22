@@ -113,10 +113,6 @@ function M.open(path)
 
     local endpoint = util.parse_reddit_endpoint(path)
 
-    -- HACK: dev
-    local json = response.json
-    response.json = nil
-
     vim.schedule(function()
         if endpoint.type == "listing" then
             ---@type NvimReddit.Listing
@@ -134,6 +130,16 @@ function M.open(path)
             util.draw(reddit_buf, ns, tns, lines, marks, things, 0)
             local c_lines, c_marks, c_things = render.listing(comments, endpoint, #lines)
             util.draw(reddit_buf, ns, tns, c_lines, c_marks, c_things, #lines)
+        elseif endpoint.type == "about" then
+            if endpoint.user then
+                --- TODO: user endpoints (not user subreddit, maybe should be normalized)
+                vim.print("user info not supported")
+            else
+                ---@type NvimReddit.Subreddit
+                local subreddit = response.data
+                local lines, marks = render.sidebar(subreddit)
+                util.draw(reddit_buf, ns, tns, lines, marks, {}, 0)
+            end
         end
 
         vim.api.nvim_set_option_value("modifiable", false, { buf = buffer })
@@ -171,9 +177,9 @@ function M.open(path)
             end, { buffer = buffer })
         end
 
-        -- HACK: dev
+        --- FIXME: add "dev" config option or something
         vim.keymap.set("n", "gj", function()
-            local formatted = vim.fn.systemlist("jq .", json)
+            local formatted = vim.fn.systemlist("jq .", response.rawdata)
             if vim.v.shell_error ~= 0 then
                 vim.notify("Failed to format JSON with jq", vim.log.levels.ERROR)
                 return

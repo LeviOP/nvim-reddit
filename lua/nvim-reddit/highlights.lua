@@ -77,3 +77,11 @@ vim.api.nvim_set_hl(0, "RedditSecondary", {
 vim.api.nvim_set_hl(0, "RedditCode", {
     background = "#000000"
 })
+
+vim.api.nvim_set_hl(0, "RedditBlockquote", {
+    foreground = "#767ea3"
+})
+
+vim.api.nvim_set_hl(0, "RedditBlockquotePad", {
+    link = "RedditBlockquote"
+})

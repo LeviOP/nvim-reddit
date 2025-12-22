@@ -1,7 +1,6 @@
 todo:
 - write a real readme
 - handle html correctly
-  - handle blockquote element
   - handle inline spoiler
   - handle sup better
   - handle pre element

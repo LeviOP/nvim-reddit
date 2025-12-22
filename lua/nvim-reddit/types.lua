@@ -33,6 +33,10 @@
 ---@field expando_mark integer|nil
 ---@field open boolean|nil
 
+---@class (exact) NvimReddit.Subreddit
+---@field data NvimReddit.SubredditData
+---@field kind "t5"
+
 ---@class (exact) NvimReddit.ListingData
 ---@field before string | null
 ---@field children (NvimReddit.Thing)[]
@@ -309,3 +313,105 @@
 ---@field total_awards_received number
 ---@field author_flair_background_color string | null
 ---@field media_metadata? table<string, NvimReddit.Media>
+
+---@class (exact) NvimReddit.SubredditData
+---@field accept_followers boolean
+---@field banner_img string
+---@field banner_size number[] | null
+---@field community_icon string
+---@field description string
+---@field display_name_prefixed string
+---@field display_name string
+---@field free_form_reports boolean
+---@field header_size number[] | null
+---@field icon_img string
+---@field icon_size any
+---@field key_color string
+---@field link_flair_enabled boolean
+---@field name string
+---@field public_description string
+---@field restrict_commenting boolean
+---@field restrict_posting boolean
+---@field show_media boolean
+---@field submit_text_label string
+---@field subscribers number
+---@field title string
+---@field url string
+---@field user_is_contributor boolean
+---@field user_is_moderator boolean
+---@field user_is_muted boolean
+---@field user_is_subscriber boolean
+---
+---HACK: Everything after this point is an extention of the base class
+---which is above. Maybe I will make this correct and make sense in the future
+---
+---@field accounts_active_is_fuzzed boolean
+---@field accounts_active number
+---@field active_user_count number
+---@field advertiser_category string
+---@field all_original_content boolean
+---@field allow_discovery boolean
+---@field allow_galleries boolean
+---@field allow_images boolean
+---@field allow_polls boolean
+---@field allow_predictions_tournament boolean
+---@field allow_predictions boolean
+---@field allow_videogifs boolean
+---@field allow_videos boolean
+---@field banner_background_color string
+---@field banner_background_image string
+---@field can_assign_link_flair boolean
+---@field can_assign_user_flair boolean
+---@field collapse_deleted_comments boolean
+---@field comment_score_hide_mins number
+---@field community_reviewed boolean
+---@field created_utc number
+---@field created number
+---@field description_html string | null
+---@field disable_contributor_requests boolean
+---@field emojis_custom_size any
+---@field emojis_enabled boolean
+---@field has_menu_widget boolean
+---@field header_img string
+---@field header_title string
+---@field hide_ads boolean
+---@field id string
+---@field is_crosspostable_subreddit boolean | null
+---@field is_enrolled_in_new_modmail any
+---@field lang string
+---@field link_flair_position string
+---@field mobile_banner_image string
+---@field notification_level string | null
+---@field original_content_tag_enabled boolean
+---@field over18 boolean
+---@field prediction_leaderboard_entry_type string
+---@field primary_color string
+---@field public_description_html string
+---@field public_traffic boolean
+---@field quarantine boolean
+---@field show_media_preview boolean
+---@field spoilers_enabled boolean
+---@field submission_type string
+---@field submit_link_label string
+---@field submit_text_html string
+---@field submit_text string
+---@field subreddit_type string
+---@field suggested_comment_sort string | null
+---@field user_can_flair_in_sr boolean | null
+---@field user_flair_background_color any
+---@field user_flair_css_class any
+---@field user_flair_enabled_in_sr boolean
+---@field user_flair_position string
+---@field user_flair_richtext any[]
+---@field user_flair_template_id any
+---@field user_flair_text_color any
+---@field user_flair_text any
+---@field user_flair_type string
+---@field user_has_favorited boolean
+---@field user_is_banned boolean
+---@field user_sr_flair_enabled boolean
+---@field user_sr_theme_enabled boolean
+---@field videostream_links_count? number
+---@field whitelist_status string
+---@field wiki_enabled boolean
+---@field wls number

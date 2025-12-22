@@ -5,8 +5,22 @@ local M = {}
 ---@param created_utc integer
 ---@return string
 function M.time_ago(created_utc)
+    return M.time_since(created_utc) .. " ago"
+end
+
+---@param created_utc integer
+---@return string
+function M.time_since(created_utc)
     local now = os.time()
     local diff = now - created_utc
+
+    local function fmt(n, unit)
+        if n == 1 then
+            return n .. " " .. unit
+        else
+            return n .. " " .. unit .. "s"
+        end
+    end
 
     local seconds = diff
     local minutes = math.floor(seconds / 60)
@@ -17,19 +31,19 @@ function M.time_ago(created_utc)
     local years   = math.floor(days / 365)
 
     if seconds < 60 then
-        return seconds .. " seconds ago"
+        return fmt(seconds, "second")
     elseif minutes < 60 then
-        return minutes .. " minutes ago"
+        return fmt(minutes, "minute")
     elseif hours < 24 then
-        return hours .. " hours ago"
+        return fmt(hours, "hour")
     elseif days < 7 then
-        return days .. " days ago"
+        return fmt(days, "day")
     elseif weeks < 5 then
-        return weeks .. " weeks ago"
+        return fmt(weeks, "week")
     elseif months < 12 then
-        return months .. " months ago"
+        return fmt(months, "month")
     else
-        return years .. " years ago"
+        return fmt(years, "year")
     end
 end
 
@@ -105,10 +119,12 @@ end
 ---@alias NvimReddit.EndpointType
 ---| "listing"
 ---| "article"
+---| "about"
 
 ---@class (exact) NvimReddit.ParsedEndpoint
 ---@field type NvimReddit.EndpointType
 ---@field subreddit string|nil
+---@field user string|nil
 
 ---@param path string
 ---@return NvimReddit.ParsedEndpoint
@@ -126,27 +142,33 @@ function M.parse_reddit_endpoint(path)
 
     ---@type string|nil
     local subreddit = nil
+    ---@type string|nil
+    local user = nil
     ---@type NvimReddit.EndpointType
     local type = "listing"
 
-    local sub = path:match("^/r/([^/]+)")
-    local user = path:match("^/user/([^/]+)")
+    local r = path:match("^/r/([^/]+)")
+    local u = path:match("^/user/([^/]+)") or path:match("^/u/([^/]+)")
 
-    if sub then
-        subreddit = sub
+    if r then
+        subreddit = r
         path = path:gsub("^/r/[^/]+", "")
-    elseif user then
-        subreddit = "u_" .. user
-        path = path:gsub("^/user/[^/]+", "")
+    elseif u then
+        subreddit = "u_" .. u
+        user = u
+        path = path:gsub("^/u/[^/]+", ""):gsub("^/user/[^/]+", "")
     end
 
     if path:match("^/comments/") then
         type = "article"
+    elseif path:match("^/about$") then
+        type = "about"
     end
 
     return {
         type = type,
         subreddit = subreddit,
+        user = user,
     }
 end
 

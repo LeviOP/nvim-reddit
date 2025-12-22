@@ -134,6 +134,7 @@ end
 
 ---@class (exact) NvimReddit.FetchResponse
 ---@field data any
+---@field rawdata string
 ---@field location string
 
 ---@class (exact) NvimReddit.RedditError
@@ -192,9 +193,8 @@ function Reddit:fetch(path, cb)
             local response = {
                 data = result,
                 location = location,
+                rawdata = res.body
             }
-            -- HACK: dev
-            response.json = res.body
             cb(response, nil)
         end
     })
