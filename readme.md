@@ -9,12 +9,11 @@ todo:
   - configurable highlights
   - configurable margins
   - move refresh token into the correct place.. blehhh
-  - type defaults / optionals correctly
+  - type config defaults / optionals correctly
 - handle post types correctly
   - handle galleries
   - handle videos
   - handle crossposts
-- handle user pages better (show post title for comments)
 - re-render images after re-rendering comment or link (from voting)
 - handle buffer being open in multiple windows
 - use style linter
@@ -23,12 +22,12 @@ todo:
 - show errors onscreen instead of printing (and use vim.notify)
 - maybe make separate wrapped type for state stored on things to reduce confusion
 - handle nsfw/spoiler links
-- fix self.subreddit domains (should link to subreddit apparently)
 - differentiate when `removal_reason` is not null
 - support replying (and posting)
 - collapse richtext rendering with state table
   - apparently if some markup ends on the word after a newline the markup isn't applied to the line before
   - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)
+  - handle case when single line that is supposed to wrap adds blank line
 - indicate whether link is expandable
 - maybe render directly instead of rendering text and shifting it around (luajit is very fast :)
 - maybe show thumbnails? (probably not)

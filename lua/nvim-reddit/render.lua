@@ -734,7 +734,7 @@ function M.link(thing)
             { "", condition = link.stickied, mark = { hl_group = "RedditStickied" } },
             -- apparently post titles are not santized on ingest, but at the client. there can be double spaces, newlines, etc.
             { html.decode(link.title):gsub("%s+", " "), mark = { hl_group = { "RedditStickied", condition = link.stickied }, url = link.url } },
-            { link.domain, pre = "(", post = ")", mark = { hl_group = "RedditAnchor", url = REDDIT_BASE .. "domain/" .. link.domain .. "/" } }
+            { link.domain, pre = "(", post = ")", mark = { hl_group = "RedditAnchor", url = thing.domain_url } }
         },
         {
             {
@@ -954,6 +954,14 @@ function M.listing(listing, endpoint, start_line)
             thing.padding = 0
             thing_lines, thing_style_marks, thing_marks = M.comment(thing, true)
         elseif thing.kind == "t3" then
+            ---@type string
+            local url_domain = thing.data.url:match("^%w+://([^/:?#]+)")
+            if url_domain ~= thing.data.domain then
+                -- this might not be a good assumption to make, but we'll see i guess
+                thing.domain_url = REDDIT_BASE .. thing.data.subreddit_name_prefixed
+            else
+                thing.domain_url = REDDIT_BASE .. "domain/" .. thing.data.domain
+            end
             thing.show_subreddit = endpoint.subreddit ~= thing.data.subreddit
             thing_lines, thing_style_marks, thing_marks = M.link(thing)
         else

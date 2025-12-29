@@ -32,6 +32,7 @@
 ---@field parsed NvimReddit.Block[]|nil
 ---@field expando_mark integer|nil
 ---@field open boolean|nil
+---@field domain_url string|nil
 
 ---@class (exact) NvimReddit.Subreddit
 ---@field data NvimReddit.SubredditData
