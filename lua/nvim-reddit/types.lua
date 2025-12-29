@@ -252,18 +252,21 @@
 ---@field controversiality number
 ---@field author_flair_text string | null
 ---@field subreddit string
+---@field link_author? string
 ---@field permalink string
 ---@field author_premium boolean
 ---@field subreddit_type string
 ---@field depth number
 ---@field unrepliable_reason unknown
 ---@field comment_type unknown
+---@field link_title? string
 ---@field is_submitter boolean
 ---@field awarders unknown[]
 ---@field can_mod_post boolean
 ---@field banned_by unknown
 ---@field collapsed boolean
 ---@field mod_note unknown
+---@field link_url? string
 ---@field mod_reports unknown[]
 ---@field collapsed_because_crowd_control unknown
 ---@field likes boolean | null

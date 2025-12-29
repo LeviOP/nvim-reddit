@@ -613,7 +613,7 @@ local function get_conditional(value)
     end ---@diagnostic disable-line: missing-return
 end
 
----@param lines Line[]
+---@param lines NvimReddit.Line[]
 ---@return string[], NvimReddit.Mark[]
 function M.lines(lines)
     ---@type string[]
@@ -712,13 +712,13 @@ end
 ---@field mark LineMark?
 
 ---@alias LineSegment LineSegmentTable|LineSegmentMDHTML|string
----@alias Line (LineSegment)[] -- parentheses so that type expansion doesn't look confusing
+---@alias NvimReddit.Line (LineSegment)[] -- parentheses so that type expansion doesn't look confusing
 
 ---@param thing NvimReddit.Link
 ---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[]
 function M.link(thing)
     local link = thing.data
-    ---@type Line[]
+    ---@type NvimReddit.Line[]
     local lines = {
         {
             {
@@ -779,7 +779,7 @@ end
 ---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[]
 function M.comment(thing, render_children)
     local comment = thing.data
-    ---@type Line[]
+    ---@type NvimReddit.Line[]
     local lines = {
         {
             -- FIXME: use padding?
@@ -811,6 +811,18 @@ function M.comment(thing, render_children)
             { comment.body_html, mdhtml = true }
         }
     }
+
+    if comment.link_title then
+        ---@type NvimReddit.Line
+        local line = {
+            { comment.link_title, mark = { url = comment.link_url } },
+            "by",
+            { comment.link_author, mark = { hl_group = "RedditAnchor", url = REDDIT_BASE .. "user/" .. comment.link_author } },
+            "in",
+            { comment.subreddit, mark = { hl_group = "RedditAnchor", url = REDDIT_BASE .. comment.subreddit_name_prefixed } },
+        }
+        table.insert(lines, 1, line)
+    end
 
 
     local rendered_lines, marks = M.lines(lines)
@@ -902,7 +914,7 @@ end
 ---@return string[], NvimReddit.Mark[]
 function M.sidebar(thing)
     local subreddit = thing.data
-    ---@type Line[]
+    ---@type NvimReddit.Line[]
     local lines = {
         -- maybe .url should be used instead? this is just more convenient
         { { subreddit.display_name, mark = { hl_group = "RedditH1", url = REDDIT_BASE .. subreddit.display_name_prefixed } } },

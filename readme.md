@@ -13,6 +13,7 @@ todo:
 - handle post types correctly
   - handle galleries
   - handle videos
+  - handle crossposts
 - handle user pages better (show post title for comments)
 - re-render images after re-rendering comment or link (from voting)
 - handle buffer being open in multiple windows
