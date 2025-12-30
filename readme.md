@@ -11,7 +11,7 @@ todo:
   - move refresh token into the correct place.. blehhh
   - type config defaults / optionals correctly
 - handle post types correctly
-  - handle galleries
+  - add progress indicator to gallery
   - handle videos
   - handle crossposts
 - re-render images after re-rendering comment or link (from voting)

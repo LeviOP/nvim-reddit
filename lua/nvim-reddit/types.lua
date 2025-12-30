@@ -33,6 +33,7 @@
 ---@field expando_mark integer|nil
 ---@field open boolean|nil
 ---@field domain_url string|nil
+---@field gallery_selected integer|nil
 
 ---@class (exact) NvimReddit.Subreddit
 ---@field data NvimReddit.SubredditData
@@ -223,9 +224,14 @@
 ---@field m string
 ---@field ext? string
 ---@field p table[]
----@field s table
+---@field s NvimReddit.MediaSource
 ---@field t? string
 ---@field id string
+
+---@class (exact) NvimReddit.MediaSource
+---@field y integer
+---@field x integer
+---@field u string
 
 ---@class (exact) NvimReddit.Preview
 ---@field images NvimReddit.PreviewImage[]

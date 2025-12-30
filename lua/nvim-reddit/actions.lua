@@ -161,7 +161,7 @@ function M.expand(thing, reddit_buf)
             local margin = config.spacing.score_margin + 1
             if hint then
                 if hint == "image" then
-                    if reddit_buf.images[thing.data.id] == nil then
+                    if not reddit_buf.images[thing.data.id] then
                         -- disable while async
                         vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
                         ---@type Image|nil
@@ -193,8 +193,45 @@ function M.expand(thing, reddit_buf)
                     line_num = line_num + 1
                 end
             elseif thing.data.is_gallery then
-                vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. "<gallery>"})
-                line_num = line_num + 1
+                -- vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. "<gallery>"})
+                -- line_num = line_num + 1
+                if not thing.gallery_selected then
+                    thing.gallery_selected = 1
+                end
+                local item = thing.data.gallery_data.items[thing.gallery_selected]
+                if not reddit_buf.images[thing.data.id] then
+                    local media = thing.data.media_metadata[item.media_id]
+                    if not media then
+                        print("Media was missing?")
+                        return
+                    end
+
+                    -- disable while async
+                    vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+                    ---@type Image|nil
+                    ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
+                    local image = vim.async.await(3, image_api.from_url, html.decode(media.s.u), {
+                        buffer = reddit_buf.buffer,
+                        window = vim.api.nvim_get_current_win(),
+                        with_virtual_padding = true,
+                        height = 20,
+                        render_offset_top = config.render_offset_top,
+                    })
+                    if image == nil then
+                        print("image was nil?!?!")
+                        goto exit
+                    end
+
+                    reddit_buf.images[thing.data.id] = image
+                    -- re-enable after async
+                    vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
+                end
+
+                reddit_buf.images[thing.data.id]:render({
+                    y = thing_mark_end - 1,
+                    x = margin
+                })
+                ::exit::
             elseif thing.data.crosspost_parent then
                 vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. "<crosspost>"})
                 line_num = line_num + 1
@@ -230,7 +267,7 @@ function M.expand(thing, reddit_buf)
 
             thing.open = true
         else
-            if hint == "image" then
+            if hint == "image" or thing.data.is_gallery then
                 reddit_buf.images[thing.data.id]:clear()
                 reddit_buf.images[thing.data.id] = nil
             end
@@ -258,6 +295,75 @@ end
 function M.open_user(thing)
     vim.async.run(function()
         buffer.open("user/" .. thing.data.author)
+    end)
+end
+
+---@param thing NvimReddit.Selectable
+---@param reddit_buf NvimReddit.Buffer
+---@param dir -1|1
+local function gallery_nav(thing, reddit_buf, dir)
+    if thing.kind ~= "t3" or not thing.data.is_gallery or not thing.open then
+        print("This is not an open gallery")
+        return
+    end
+
+    ---@type integer, _, vim.api.keyset.extmark_details
+    local _, _, thing_mark_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true }))
+    local thing_mark_end = thing_mark_details.end_row
+    ---@cast thing_mark_end -? -- we always set it with an end_row so
+
+    local last = #thing.data.gallery_data.items
+    thing.gallery_selected = thing.gallery_selected + dir
+    if thing.gallery_selected == 0 then
+        thing.gallery_selected = last
+    elseif thing.gallery_selected > last then
+        thing.gallery_selected = 1
+    end
+
+    local item = thing.data.gallery_data.items[thing.gallery_selected]
+    local media = thing.data.media_metadata[item.media_id]
+    if not media then
+        print("Media was missing?")
+        return
+    end
+
+    ---@type Image|nil
+    ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
+    local image = vim.async.await(3, image_api.from_url, html.decode(media.s.u), {
+        buffer = reddit_buf.buffer,
+        window = vim.api.nvim_get_current_win(),
+        with_virtual_padding = true,
+        height = 20,
+        render_offset_top = config.render_offset_top,
+    })
+    if image == nil then
+        print("image was nil?!?!")
+        return
+    end
+
+    local margin = config.spacing.score_margin + 1
+
+    reddit_buf.images[thing.data.id]:clear()
+    reddit_buf.images[thing.data.id] = image
+    reddit_buf.images[thing.data.id]:render({
+        y = thing_mark_end - 1,
+        x = margin
+    })
+end
+
+---@param thing NvimReddit.Selectable
+---@param reddit_buf NvimReddit.Buffer
+function M.gallery_next(thing, reddit_buf)
+    vim.async.run(function ()
+        gallery_nav(thing, reddit_buf, 1)
+    end)
+end
+
+---@param thing NvimReddit.Selectable
+---@param reddit_buf NvimReddit.Buffer
+function M.gallery_prev(thing, reddit_buf)
+    vim.async.run(function ()
+        gallery_nav(thing, reddit_buf, -1)
     end)
 end
 
