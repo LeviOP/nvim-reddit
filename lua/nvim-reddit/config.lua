@@ -128,7 +128,7 @@ function M.defaults()
             max_line_length = 120
         },
         render_offset_top = 0,
-        player_options = {"mpv", "--keep-open=yes", "--loop=inf"},
+        player_options = {"mpv", "--keep-open=yes", "--loop=inf", "--x11-name=mpv-float"},
     }
     return defaults
 end
