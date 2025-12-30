@@ -115,12 +115,13 @@ function M.defaults()
             {"n", "c", actions.open_comments},
             {"n", "x", actions.expand},
             {"n", "gp", actions.permalink},
+            {"n", "yp", actions.yank_permalink},
             {"n", "gs", actions.open_subreddit},
             {"n", "gl", function(thing) vim.print(thing) end},
             {"n", "gu", actions.open_user},
             {"n", "]g", actions.gallery_next},
             {"n", "[g", actions.gallery_prev},
-            {"n", "gd", actions.open_domain}
+            {"n", "gd", actions.open_domain},
         },
         spacing = {
             score_margin = 6,

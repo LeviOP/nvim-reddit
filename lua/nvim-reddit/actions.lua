@@ -407,4 +407,11 @@ function M.open_domain(thing)
     end):wait()
 end
 
+---@param thing NvimReddit.Selectable
+function M.yank_permalink(thing)
+    local register = vim.v.register
+    local permalink = REDDIT_BASE .. thing.data.permalink
+    vim.fn.setreg(register, permalink)
+end
+
 return M
