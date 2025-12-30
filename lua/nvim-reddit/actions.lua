@@ -16,10 +16,10 @@ local REDDIT_BASE = "https://www.reddit.com"
 
 local M = {}
 
----@param dir 1|0|-1
 ---@param thing NvimReddit.Votable
 ---@param reddit_buf NvimReddit.Buffer
-local function vote(dir, thing, reddit_buf)
+---@param dir 1|0|-1
+local function vote(thing, reddit_buf, dir)
     state.reddit:vote(thing.data.name, dir, function(err)
         if err then
             print("Error voting: " .. err)
@@ -50,6 +50,18 @@ local function vote(dir, thing, reddit_buf)
         end_row = thing_mark.start_line + thing_mark.lines + row,
         end_col = 0
     })
+
+    local image = reddit_buf.images[thing.data.id]
+    if image then
+        -- we have to wait until the text above is rendered so that the marks are "settled"
+        vim.schedule(function()
+            image:render({
+                y = details.end_row - 1,
+                x = config.spacing.score_margin + 1
+            })
+        end)
+    end
+
     vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
 end
 
@@ -72,7 +84,7 @@ function M.upvote(thing, reddit_buf)
         thing.data.score = thing.data.score + 1
     end
 
-    vote(dir, thing, reddit_buf)
+    vote(thing, reddit_buf, dir)
 end
 
 ---@param thing NvimReddit.Selectable
@@ -94,7 +106,7 @@ function M.downvote(thing, reddit_buf)
         thing.data.score = thing.data.score - 1
     end
 
-    vote(dir, thing, reddit_buf)
+    vote(thing, reddit_buf, dir)
 end
 
 ---@param thing NvimReddit.Selectable
@@ -105,7 +117,7 @@ function M.open_comments(thing)
     end
     vim.async.run(function()
         buffer.open(thing.data.permalink:sub(2))
-    end)
+    end):wait()
 end
 
 ---@param thing NvimReddit.Selectable
@@ -144,7 +156,7 @@ function M.expand(thing, reddit_buf)
                     x = thing.padding + 5
                 })
                 thing.open = true
-            end)
+            end):wait()
         else
             reddit_buf.images[thing.data.id]:clear()
             reddit_buf.images[thing.data.id] = nil
@@ -262,7 +274,7 @@ function M.expand(thing, reddit_buf)
 
             thing.expando_mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end, 0, {
                 id = thing.expando_mark,
-                end_row = thing_mark_end+line_num
+                end_row = thing_mark_end+line_num,
             })
 
             thing.open = true
@@ -272,11 +284,15 @@ function M.expand(thing, reddit_buf)
                 reddit_buf.images[thing.data.id] = nil
             end
             local row, _, expando_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, ns, thing.expando_mark, { details = true }))
-            vim.api.nvim_buf_set_lines(reddit_buf.buffer, row, expando_details.end_row, false, {})
+            -- HACK: for some reason when an image is added (or maybe removed?) after
+            -- the post is re-rendered due to voting, the end_row of the mark is set to 0
+            if expando_details.end_row > row then
+                vim.api.nvim_buf_set_lines(reddit_buf.buffer, row, expando_details.end_row, false, {})
+            end
             thing.open = false
         end
         vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
-    end)
+    end):wait()
 end
 
 ---@param thing NvimReddit.Selectable
@@ -288,14 +304,14 @@ end
 function M.open_subreddit(thing)
     vim.async.run(function()
         buffer.open(thing.data.subreddit_name_prefixed)
-    end)
+    end):wait()
 end
 
 ---@param thing NvimReddit.Selectable
 function M.open_user(thing)
     vim.async.run(function()
         buffer.open("user/" .. thing.data.author)
-    end)
+    end):wait()
 end
 
 ---@param thing NvimReddit.Selectable
@@ -356,7 +372,7 @@ end
 function M.gallery_next(thing, reddit_buf)
     vim.async.run(function ()
         gallery_nav(thing, reddit_buf, 1)
-    end)
+    end):wait()
 end
 
 ---@param thing NvimReddit.Selectable
@@ -364,7 +380,7 @@ end
 function M.gallery_prev(thing, reddit_buf)
     vim.async.run(function ()
         gallery_nav(thing, reddit_buf, -1)
-    end)
+    end):wait()
 end
 
 return M

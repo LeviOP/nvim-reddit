@@ -14,7 +14,7 @@ todo:
   - add progress indicator to gallery
   - handle videos
   - handle crossposts
-- re-render images after re-rendering comment or link (from voting)
+- figure out why virtual padding sometimes isn't displayed until a redraw
 - handle buffer being open in multiple windows
 - use style linter
 - handle score digit count being higher than score margin
