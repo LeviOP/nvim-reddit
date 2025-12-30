@@ -203,6 +203,15 @@ function M.expand(thing, reddit_buf)
                 elseif hint ~= "link" and hint ~= "self" then
                     vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. "<" .. hint .. ">"})
                     line_num = line_num + 1
+                    if hint == "hosted:video" then
+                        if thing.data.secure_media.reddit_video then
+                            ---@type string[]
+                            local player_args = {}
+                            for i, arg in ipairs(config.player_options) do player_args[i] = arg end
+                            table.insert(player_args, html.decode(thing.data.secure_media.reddit_video.dash_url))
+                            thing.player_job = vim.system(player_args)
+                        end
+                    end
                 end
             elseif thing.data.is_gallery then
                 -- vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. "<gallery>"})
@@ -279,6 +288,10 @@ function M.expand(thing, reddit_buf)
 
             thing.open = true
         else
+            if thing.player_job then
+                thing.player_job:kill("sigterm")
+                thing.player_job = nil
+            end
             if hint == "image" or thing.data.is_gallery then
                 reddit_buf.images[thing.data.id]:clear()
                 reddit_buf.images[thing.data.id] = nil
@@ -380,6 +393,17 @@ end
 function M.gallery_prev(thing, reddit_buf)
     vim.async.run(function ()
         gallery_nav(thing, reddit_buf, -1)
+    end):wait()
+end
+
+---@param thing NvimReddit.Selectable
+function M.open_domain(thing)
+    if thing.kind ~= "t3" then
+        print("not a link")
+        return
+    end
+    vim.async.run(function()
+        buffer.open(thing.domain_url)
     end):wait()
 end
 

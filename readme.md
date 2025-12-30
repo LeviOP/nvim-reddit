@@ -12,7 +12,6 @@ todo:
   - type config defaults / optionals correctly
 - handle post types correctly
   - add progress indicator to gallery
-  - handle videos
   - handle crossposts
 - figure out why virtual padding sometimes isn't displayed until a redraw
 - handle buffer being open in multiple windows

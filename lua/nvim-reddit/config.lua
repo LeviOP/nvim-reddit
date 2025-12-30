@@ -11,6 +11,7 @@ local util = require("nvim-reddit.util")
 ---@field keymaps NvimReddit.Keymap[]
 ---@field spacing NvimReddit.SpacingConfig
 ---@field render_offset_top integer
+---@field player_options string[]
 local M = {}
 
 ---@alias NvimReddit.Keymap { [1]: string, [2]: string, [3]: fun(thing: NvimReddit.Selectable, reddit_buf: NvimReddit.Buffer) }
@@ -119,12 +120,14 @@ function M.defaults()
             {"n", "gu", actions.open_user},
             {"n", "]g", actions.gallery_next},
             {"n", "[g", actions.gallery_prev},
+            {"n", "gd", actions.open_domain}
         },
         spacing = {
             score_margin = 6,
             max_line_length = 120
         },
-        render_offset_top = 0
+        render_offset_top = 0,
+        player_options = {"mpv", "--keep-open=yes", "--loop=inf"},
     }
     return defaults
 end

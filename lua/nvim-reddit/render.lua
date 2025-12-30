@@ -570,7 +570,7 @@ end
 local flair_hls = {}
 local function get_flair_hl(subreddit, flair_id, bg_color)
     flair_id = subreddit .. flair_id
-    if bg_color == vim.NIL then
+    if bg_color == vim.NIL or bg_color == "transparent" then
         return "RedditFlair"
     end
     if flair_id == vim.NIL then print("THIS IS A FAIL") end
@@ -734,7 +734,7 @@ function M.link(thing)
             { "", condition = link.stickied, mark = { hl_group = "RedditStickied" } },
             -- apparently post titles are not santized on ingest, but at the client. there can be double spaces, newlines, etc.
             { html.decode(link.title):gsub("%s+", " "), mark = { hl_group = { "RedditStickied", condition = link.stickied }, url = link.url } },
-            { link.domain, pre = "(", post = ")", mark = { hl_group = "RedditAnchor", url = thing.domain_url } }
+            { link.domain, pre = "(", post = ")", mark = { hl_group = "RedditAnchor", url = REDDIT_BASE .. thing.domain_url } }
         },
         {
             {
@@ -837,7 +837,6 @@ function M.comment(thing, render_children)
     local media_metadata = thing.data.media_metadata
     if media_metadata then
         for _, media in pairs(media_metadata) do
-            ---@type string
             if media.e == "Image" then
                 for _, mark in ipairs(marks) do
                     ---@type string|nil
@@ -857,15 +856,32 @@ function M.comment(thing, render_children)
                     end
                 end
             elseif media.e == "AnimatedImage" then
-                for _, mark in ipairs(marks) do
-                    ---@type string|nil
-                    local url = mark.details.url
-                    if url and url == media.ext then
-                        thing.media = {
-                            url = html.decode(media.s.gif),
-                            line = mark.line,
-                        }
-                        goto found
+                if media.t == "giphy" then
+                    for _, mark in ipairs(marks) do
+                        ---@type string|nil
+                        local url = mark.details.url
+                        if url and url == media.ext then
+                            thing.media = {
+                                url = html.decode(media.s.gif),
+                                line = mark.line,
+                            }
+                            goto found
+                        end
+                    end
+                else
+                    for _, mark in ipairs(marks) do
+                        local url = mark.details.url
+                        if url and url == html.decode(media.s.gif) then
+                            thing.media = {
+                                url = html.decode(media.s.gif),
+                                line = mark.line
+                            }
+                            local line = rendered_lines[mark.line + 1]
+                            rendered_lines[mark.line + 1] = line:sub(1, mark.start_col) .. "<gif>"
+                            mark.end_col = mark.start_col + 5 -- length of "<gif>"
+
+                            goto found
+                        end
                     end
                 end
             else
@@ -958,9 +974,9 @@ function M.listing(listing, endpoint, start_line)
             local url_domain = thing.data.url:match("^%w+://([^/:?#]+)")
             if url_domain ~= thing.data.domain then
                 -- this might not be a good assumption to make, but we'll see i guess
-                thing.domain_url = REDDIT_BASE .. thing.data.subreddit_name_prefixed
+                thing.domain_url = thing.data.subreddit_name_prefixed
             else
-                thing.domain_url = REDDIT_BASE .. "domain/" .. thing.data.domain
+                thing.domain_url = "domain/" .. thing.data.domain
             end
             thing.show_subreddit = endpoint.subreddit ~= thing.data.subreddit
             thing_lines, thing_style_marks, thing_marks = M.link(thing)

@@ -24,6 +24,7 @@
 ---@field padding integer|nil
 ---@field media NvimReddit.Image|nil
 ---@field open boolean|nil
+---@field player_job vim.SystemObj|nil
 
 ---@class (exact) NvimReddit.Link
 ---@field data NvimReddit.LinkData
@@ -34,6 +35,7 @@
 ---@field open boolean|nil
 ---@field domain_url string|nil
 ---@field gallery_selected integer|nil
+---@field player_job vim.SystemObj|nil
 
 ---@class (exact) NvimReddit.Subreddit
 ---@field data NvimReddit.SubredditData
@@ -117,7 +119,7 @@
 ---@field is_crosspostable boolean
 ---@field author_is_blocked boolean
 ---@field url_overridden_by_dest? string
----@field secure_media NvimReddit.Media | null
+---@field secure_media NvimReddit.MediaData | null
 ---@field removed_by_category null
 ---@field banned_at_utc null
 ---@field author_cakeday? true
@@ -231,7 +233,9 @@
 ---@class (exact) NvimReddit.MediaSource
 ---@field y integer
 ---@field x integer
----@field u string
+---@field u? string
+---@field gif? string
+---@field mp4? string
 
 ---@class (exact) NvimReddit.Preview
 ---@field images NvimReddit.PreviewImage[]

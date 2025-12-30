@@ -125,6 +125,19 @@ function M.open(path)
             ---@type NvimReddit.Listing
             local comments = response.data[2]
 
+            -- HACK: this is stuff that we usually set up in in render.listing.
+            -- we might want to move this to a standard place instead of at
+            -- every call site
+            ---@type string
+            local url_domain = link.data.url:match("^%w+://([^/:?#]+)")
+            if url_domain ~= link.data.domain then
+                -- this might not be a good assumption to make, but we'll see i guess
+                link.domain_url = link.data.subreddit_name_prefixed
+            else
+                link.domain_url = "domain/" .. link.data.domain
+            end
+            link.show_subreddit = endpoint.subreddit ~= link.data.subreddit
+
             local lines, marks, things = render.link(link)
             table.insert(lines, "")
             util.draw(reddit_buf, ns, tns, lines, marks, things, 0)
