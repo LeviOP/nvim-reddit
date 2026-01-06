@@ -240,6 +240,7 @@ function M.expand(thing, reddit_buf)
                     })
                     if image == nil then
                         print("image was nil?!?!")
+                        vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
                         goto exit
                     end
 
@@ -300,7 +301,11 @@ function M.expand(thing, reddit_buf)
             -- HACK: for some reason when an image is added (or maybe removed?) after
             -- the post is re-rendered due to voting, the end_row of the mark is set to 0
             if expando_details.end_row > row then
+                local cursor = vim.api.nvim_win_get_cursor(0);
                 vim.api.nvim_buf_set_lines(reddit_buf.buffer, row, expando_details.end_row, false, {})
+                if expando_details.end_row >= cursor[1] and cursor[1] > row then
+                    vim.api.nvim_win_set_cursor(0, { row, cursor[2] })
+                end
             end
             thing.open = false
         end

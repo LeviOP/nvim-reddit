@@ -13,7 +13,10 @@ todo:
 - handle post types correctly
   - add progress indicator to gallery
   - handle crossposts
-- figure out why virtual padding sometimes isn't displayed until a redraw
+    - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
+- handle rich:video and similar
+- only show link with sticked text on subreddit
+- figure out why virtual padding sometimes isn't displayed until a redraw (probably image.nvim's fault)
 - handle buffer being open in multiple windows
 - use style linter
 - handle score digit count being higher than score margin
