@@ -643,20 +643,22 @@ function M.lines(lines)
                     rendered_line = rendered_line .. seg.pre
                     offset = rendered_line:len()
                 end
-                if seg.mark ~= nil then
-                    local hl_group = get_conditional(seg.mark.hl_group)
-                    local url = get_conditional(seg.mark.url)
-                    if hl_group or url then
-                        table.insert(marks, {
-                            details = {
-                                priority = 200,
-                                hl_group = hl_group,
-                                url = url
-                            },
-                            line = cur_line,
-                            start_col = offset,
-                            end_col = offset+value:len()
-                        })
+                if seg.marks ~= nil then
+                    for _, mark in ipairs(seg.marks) do
+                        local hl_group = get_conditional(mark.hl_group)
+                        local url = get_conditional(mark.url)
+                        if hl_group or url then
+                            table.insert(marks, {
+                                details = {
+                                    priority = 200,
+                                    hl_group = hl_group,
+                                    url = url
+                                },
+                                line = cur_line,
+                                start_col = offset,
+                                end_col = offset+value:len()
+                            })
+                        end
                     end
                 end
                 if seg.mdhtml == true then ---@cast seg LineSegmentMDHTML
@@ -709,7 +711,7 @@ end
 ---@field pre string?
 ---@field post string?
 ---@field padding number?
----@field mark LineMark?
+---@field marks LineMark[]?
 
 ---@alias LineSegment LineSegmentTable|LineSegmentMDHTML|string
 ---@alias NvimReddit.Line (LineSegment)[] -- parentheses so that type expansion doesn't look confusing
@@ -724,43 +726,67 @@ function M.link(thing)
             {
                 "󰜷",
                 padding = config.spacing.score_margin,
-                mark = { hl_group = { "RedditUpvoted", condition = link.likes == true } }
+                marks = {{ hl_group = { "RedditUpvoted", condition = link.likes == true } }},
             },
             {
                 util.closure(html.decode, link.link_flair_text),
                 condition = link.link_flair_text ~= vim.NIL,
-                mark = { hl_group = util.closure(get_flair_hl, link.subreddit, link.link_flair_text, link.link_flair_background_color) }
+                marks = {{ hl_group = util.closure(get_flair_hl, link.subreddit, link.link_flair_text, link.link_flair_background_color) }}
             },
-            { "", condition = link.stickied, mark = { hl_group = "RedditStickied" } },
+            {
+                "",
+                condition = link.stickied,
+                marks = {{ hl_group = "RedditStickied" }}},
             -- apparently post titles are not santized on ingest, but at the client. there can be double spaces, newlines, etc.
-            { html.decode(link.title):gsub("%s+", " "), mark = { hl_group = { "RedditStickied", condition = link.stickied }, url = link.url } },
-            { link.domain, pre = "(", post = ")", mark = { hl_group = "RedditAnchor", url = REDDIT_BASE .. thing.domain_url } }
+            {
+                html.decode(link.title):gsub("%s+", " "),
+                marks = {{ hl_group = { "RedditStickied", condition = link.stickied }, url = link.url }},
+            },
+            {
+                link.domain,
+                pre = "(",
+                post = ")",
+                marks = {{ hl_group = "RedditAnchor", url = REDDIT_BASE .. thing.domain_url }},
+            },
         },
         {
             {
                 link.score,
                 padding = config.spacing.score_margin,
-                mark = { hl_group = { link.likes and "RedditUpvoted" or "RedditDownvoted", condition = link.likes ~= vim.NIL } }
+                marks = {{ hl_group = { link.likes and "RedditUpvoted" or "RedditDownvoted", condition = link.likes ~= vim.NIL } }},
             },
             "submitted",
             util.time_ago(link.created),
             "by",
-            { link.author, mark = { hl_group = "RedditAnchor", url = REDDIT_BASE .. "user/" .. link.author } },
-            { "to", condition = thing.show_subreddit },
+            {
+                link.author,
+                marks = {
+                    { hl_group = "RedditAnchor", url = REDDIT_BASE .. "user/" .. link.author },
+                    { hl_group = { "RedditModerator", condition = link.distinguished == "moderator" } },
+                    { hl_group = { "RedditAdmin", condition = link.distinguished == "admin" } },
+                },
+            },
+            {
+                "to",
+                condition = thing.show_subreddit,
+            },
             {
                 link.subreddit_name_prefixed,
                 condition = thing.show_subreddit,
-                mark = { hl_group = "RedditAnchor", url = REDDIT_BASE .. link.subreddit_name_prefixed }
-            }
+                marks = {{ hl_group = "RedditAnchor", url = REDDIT_BASE .. link.subreddit_name_prefixed }},
+            },
         },
         {
             {
                 "󰜮",
                 padding = config.spacing.score_margin,
-                mark = { hl_group = { "RedditDownvoted", condition = link.likes == false } }
+                marks = {{ hl_group = { "RedditDownvoted", condition = link.likes == false } }}
             },
-            { link.num_comments .. " comments", mark = { url = REDDIT_BASE .. link.permalink:sub(2) } }
-        }
+            {
+                link.num_comments .. " comments",
+                marks = {{ url = REDDIT_BASE .. link.permalink:sub(2) }},
+            },
+        },
     }
 
 
@@ -783,43 +809,80 @@ function M.comment(thing, render_children)
     local lines = {
         {
             -- FIXME: use padding?
-            { (" "):rep(math.max(thing.padding - 1, 0)), condition = thing.padding ~= 0 },
+            {
+                (" "):rep(math.max(thing.padding - 1, 0)),
+                condition = thing.padding ~= 0,
+            },
             {
                 "󰜷",
-                mark = { hl_group = { "RedditUpvoted", condition = comment.likes == true } }
+                marks = {{ hl_group = { "RedditUpvoted", condition = comment.likes == true } }},
             },
-            { comment.author, mark = { hl_group = comment.is_submitter and "RedditOP" or "RedditAnchor" } },
+            {
+                comment.author,
+                marks = {
+                    { hl_group = { "RedditAnchor", condition = comment.author_fullname ~= nil }, url = { REDDIT_BASE .. "user/" .. comment.author, condition = comment.author_fullname ~= nil } },
+                    { hl_group = { "RedditSecondary", condition = not comment.author_fullname } },
+                    { hl_group = { "RedditOP", condition = comment.is_submitter } },
+                    { hl_group = { "RedditModerator", condition = comment.distinguished == "moderator" } },
+                    { hl_group = { "RedditAdmin", condition = comment.distinguished == "admin" } },
+                },
+            },
             {
                 function() return select(1, html.decode(comment.author_flair_text--[[@as string]]):gsub("%s+$", "")) end,
+                marks = {{ hl_group = "RedditFlair" }},
                 condition = comment.author_flair_text ~= vim.NIL,
-                mark = { hl_group = "RedditFlair" }
             },
-            { comment.score .. " points", mark = { hl_group = "Bold" } },
-            { util.time_ago(comment.created) .. (comment.edited ~= false and "*" or ""), mark = { hl_group = "RedditSecondary" } },
+            {
+                comment.score .. " points",
+                marks = {{ hl_group = "Bold" }},
+                condition = not comment.score_hidden,
+            },
+            {
+                "[score hidden]",
+                marks = {{ hl_group = "RedditSecondary" }},
+                condition = comment.score_hidden,
+            },
+            {
+                util.time_ago(comment.created) .. (comment.edited ~= false and "*" or ""),
+                marks = {{ hl_group = "RedditSecondary" }},
+            },
             {
                 function() return "(last edited " .. util.time_ago(comment.edited) .. ")" end,
+                marks = {{ hl_group = "RedditSecondary" }},
                 condition = comment.edited ~= false,
-                mark = { hl_group = "RedditSecondary" }
-            }
+            },
+            {
+                "- stickied comment",
+                marks = {{ hl_group = "RedditStickied" }},
+                condition = comment.stickied,
+            },
+            {
+                "",
+                marks = {{ hl_group = "RedditLocked" }},
+                condition = comment.locked,
+            },
         },
         {
-            { (" "):rep(math.max(thing.padding - 1, 0)), condition = thing.padding ~= 0 },
+            {
+                (" "):rep(math.max(thing.padding - 1, 0)),
+                condition = thing.padding ~= 0,
+            },
             {
                 "󰜮",
-                mark = { hl_group = { "RedditDownvoted", condition = comment.likes == false } }
+                marks = {{ hl_group = { "RedditDownvoted", condition = comment.likes == false } }}
             },
-            { comment.body_html, mdhtml = true }
+            { comment.body_html, mdhtml = true },
         }
     }
 
     if comment.link_title then
         ---@type NvimReddit.Line
         local line = {
-            { comment.link_title, mark = { url = comment.link_url } },
+            { comment.link_title, marks = {{ url = comment.link_url }} },
             "by",
-            { comment.link_author, mark = { hl_group = "RedditAnchor", url = REDDIT_BASE .. "user/" .. comment.link_author } },
+            { comment.link_author, marks = {{ hl_group = "RedditAnchor", url = REDDIT_BASE .. "user/" .. comment.link_author }} },
             "in",
-            { comment.subreddit, mark = { hl_group = "RedditAnchor", url = REDDIT_BASE .. comment.subreddit_name_prefixed } },
+            { comment.subreddit, marks = {{ hl_group = "RedditAnchor", url = REDDIT_BASE .. comment.subreddit_name_prefixed }} },
         }
         table.insert(lines, 1, line)
     end
@@ -933,7 +996,7 @@ function M.sidebar(thing)
     ---@type NvimReddit.Line[]
     local lines = {
         -- maybe .url should be used instead? this is just more convenient
-        { { subreddit.display_name, mark = { hl_group = "RedditH1", url = REDDIT_BASE .. subreddit.display_name_prefixed } } },
+        { { subreddit.display_name, marks = {{ hl_group = "RedditH1", url = REDDIT_BASE .. subreddit.display_name_prefixed } }} },
         { { subreddit.description_html, mdhtml = true, condition = subreddit.description_html ~= vim.NIL } },
         -- HACK: add actual hr instead of just replicating markdown html
         { { "<div><hr></div>" , mdhtml = true } },

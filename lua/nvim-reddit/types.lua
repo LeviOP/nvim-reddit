@@ -145,7 +145,7 @@
 ---@field num_crossposts number
 ---@field gildings NvimReddit.Gildings
 ---@field user_reports any[]
----@field distinguished null
+---@field distinguished NvimReddit.Distinguished
 ---@field author_flair_css_class null
 ---@field is_created_from_ads_ui boolean
 ---@field id string
@@ -161,6 +161,8 @@
 ---@field view_count null
 ---@field preview? NvimReddit.Preview
 ---@field post_hint? string
+
+---@alias NvimReddit.Distinguished null | "moderator" | "admin" | "special" -- https://redd.it/19ak1b
 
 ---@alias (exact) NvimReddit.FlairTextColor
 ---| "dark"
@@ -297,7 +299,7 @@
 ---@field can_gild boolean
 ---@field collapsed_reason unknown
 ---@field author_flair_richtext unknown[]
----@field author_fullname string
+---@field author_fullname? string
 ---@field author string
 ---@field author_is_blocked boolean
 ---@field banned_at_utc unknown
@@ -319,7 +321,7 @@
 ---@field archived boolean
 ---@field gildings NvimReddit.Gildings
 ---@field user_reports unknown[]
----@field distinguished unknown
+---@field distinguished NvimReddit.Distinguished
 ---@field author_flair_css_class unknown
 ---@field link_id string
 ---@field downs number

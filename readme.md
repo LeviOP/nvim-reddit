@@ -15,12 +15,12 @@ todo:
   - handle crossposts
     - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
 - handle rich:video and similar
+- support contest mode
 - only show link with sticked text on subreddit
 - figure out why virtual padding sometimes isn't displayed until a redraw (probably image.nvim's fault)
 - handle buffer being open in multiple windows
 - use style linter
 - handle score digit count being higher than score margin
-- multiple marks for op and stuff
 - show errors onscreen instead of printing (and use vim.notify)
 - maybe make separate wrapped type for state stored on things to reduce confusion
 - handle nsfw/spoiler links

@@ -29,7 +29,8 @@ vim.api.nvim_set_hl(0, "RedditDel", {
 })
 
 vim.api.nvim_set_hl(0, "RedditSup", {
-    background = "#00FF00"
+    underdotted = true,
+    italic = true,
 })
 
 vim.api.nvim_set_hl(0, "RedditH1", {
@@ -59,6 +60,22 @@ vim.api.nvim_set_hl(0, "RedditH6", {
 vim.api.nvim_set_hl(0, "RedditOP", {
     foreground = "#FFFFFF",
     background = "#0055df"
+})
+
+vim.api.nvim_set_hl(0, "RedditModerator", {
+    foreground = "#FFFFFF",
+    background = "#228822",
+    bold = true
+})
+
+vim.api.nvim_set_hl(0, "RedditAdmin", {
+    foreground = "#FFFFFF",
+    background = "#FF0011",
+    bold = true
+})
+
+vim.api.nvim_set_hl(0, "RedditLocked", {
+    foreground = "#FFD635",
 })
 
 vim.api.nvim_set_hl(0, "RedditSelected", {
