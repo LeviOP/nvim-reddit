@@ -717,7 +717,7 @@ end
 ---@alias NvimReddit.Line (LineSegment)[] -- parentheses so that type expansion doesn't look confusing
 
 ---@param thing NvimReddit.Link
----@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[]
+---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.Fold[]
 function M.link(thing)
     local link = thing.data
     ---@type NvimReddit.Line[]
@@ -797,12 +797,12 @@ function M.link(thing)
         lines = #rendered_lines,
         thing = thing
     }}
-    return rendered_lines, marks, things
+    return rendered_lines, marks, things, {}
 end
 
 ---@param thing NvimReddit.Comment
 ---@param render_children boolean
----@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[]
+---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.Fold[]
 function M.comment(thing, render_children)
     local comment = thing.data
     ---@type NvimReddit.Line[]
@@ -897,6 +897,9 @@ function M.comment(thing, render_children)
         thing = thing
     }}
 
+    ---@type NvimReddit.Fold[]
+    local folds = {}
+
     local media_metadata = thing.data.media_metadata
     if media_metadata then
         for _, media in pairs(media_metadata) do
@@ -954,13 +957,13 @@ function M.comment(thing, render_children)
         ::found::
     end
 
+    local line = top_len + 1
     if type(comment.replies) == "table" and render_children then
         if comment.replies.kind ~= "Listing" then
             print("Why aren't the replies a listing!??!!!!")
-            return rendered_lines, marks, things
+            return rendered_lines, marks, things, {}
         end
 
-        local line = top_len + 1
         for _, child in ipairs(comment.replies.data.children) do
             if child.kind ~= "t1" then
                 print("woah.. what is this kind?!:", child.kind)
@@ -968,7 +971,7 @@ function M.comment(thing, render_children)
             end
             table.insert(rendered_lines, "")
             child.padding = thing.padding + 2
-            local child_lines, child_marks, child_things = M.comment(child, true)
+            local child_lines, child_marks, child_things, child_folds = M.comment(child, true)
             for _, child_line in ipairs(child_lines) do
                 table.insert(rendered_lines, child_line)
             end
@@ -981,12 +984,22 @@ function M.comment(thing, render_children)
                 child_thing.start_line = child_thing.start_line + line
                 table.insert(things, child_thing)
             end
+            for _, child_fold in ipairs(child_folds) do
+                child_fold.start_line = child_fold.start_line + line
+                child_fold.end_line = child_fold.end_line + line
+                table.insert(folds, child_fold)
+            end
             line = line + child_line_count + 1
             ::continue::
         end
     end
 
-    return rendered_lines, marks, things
+    table.insert(folds, {
+        start_line = 0,
+        end_line = line - 2
+    })
+
+    return rendered_lines, marks, things, folds
 end
 
 ---@param thing NvimReddit.Subreddit
@@ -1015,10 +1028,14 @@ end
 ---@field start_line integer
 ---@field lines integer
 
+---@class (exact) NvimReddit.Fold
+---@field start_line integer
+---@field end_line integer
+
 ---@param listing NvimReddit.Listing
 ---@param endpoint NvimReddit.ParsedEndpoint
 ---@param start_line? integer
----@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[]
+---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.Fold[]
 function M.listing(listing, endpoint, start_line)
     ---@type string[]
     local lines = {}
@@ -1026,12 +1043,14 @@ function M.listing(listing, endpoint, start_line)
     local marks = {}
     ---@type NvimReddit.ThingMark[]
     local things = {}
+    ---@type NvimReddit.Fold[]
+    local folds = {}
     local line = start_line or 0
     for _, thing in ipairs(listing.data.children) do
-        local thing_lines, thing_style_marks, thing_marks
+        local thing_lines, thing_style_marks, thing_marks, thing_folds
         if thing.kind == "t1" then
             thing.padding = 0
-            thing_lines, thing_style_marks, thing_marks = M.comment(thing, true)
+            thing_lines, thing_style_marks, thing_marks, thing_folds = M.comment(thing, true)
         elseif thing.kind == "t3" then
             ---@type string
             local url_domain = thing.data.url:match("^%w+://([^/:?#]+)")
@@ -1042,7 +1061,7 @@ function M.listing(listing, endpoint, start_line)
                 thing.domain_url = "domain/" .. thing.data.domain
             end
             thing.show_subreddit = endpoint.subreddit ~= thing.data.subreddit
-            thing_lines, thing_style_marks, thing_marks = M.link(thing)
+            thing_lines, thing_style_marks, thing_marks, thing_folds = M.link(thing)
         else
             print("unhandled thing kind!:", thing.kind)
             goto continue
@@ -1058,13 +1077,18 @@ function M.listing(listing, endpoint, start_line)
             thing_mark.start_line = thing_mark.start_line + line
             table.insert(things, thing_mark)
         end
+        for _, fold in ipairs(thing_folds) do
+            fold.start_line = fold.start_line + line
+            fold.end_line = fold.end_line + line
+            table.insert(folds, fold)
+        end
         line = line + #thing_lines
         table.insert(lines, "")
         line = line + 1
         ::continue::
     end
 
-    return lines, marks, things
+    return lines, marks, things, folds
 end
 
 return M

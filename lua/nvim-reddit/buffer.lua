@@ -61,6 +61,8 @@ function M.open(path)
     vim.api.nvim_set_option_value("filetype", "reddit", { buf = buffer })
     vim.api.nvim_set_option_value("buftype", "nofile", { buf = buffer })
     vim.api.nvim_set_option_value("swapfile", false, { buf = buffer })
+    -- vim.api.nvim_set_option_value("foldmethod", "manual", { win = 0 })
+    -- vim.api.nvim_set_option_value("foldtext", "v:...", { win = 0 })
     vim.api.nvim_buf_set_name(buffer, "reddit://" .. path)
 
     vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {
@@ -117,8 +119,8 @@ function M.open(path)
         if endpoint.type == "listing" then
             ---@type NvimReddit.Listing
             local listing = response.data
-            local lines, marks, things = render.listing(listing, endpoint)
-            util.draw(reddit_buf, ns, tns, lines, marks, things, 0)
+            local lines, marks, things, folds = render.listing(listing, endpoint)
+            util.draw(reddit_buf, ns, tns, lines, marks, things, folds, 0)
         elseif endpoint.type == "article" then
             ---@type NvimReddit.Link
             local link = response.data[1].data.children[1]
@@ -140,9 +142,9 @@ function M.open(path)
 
             local lines, marks, things = render.link(link)
             table.insert(lines, "")
-            util.draw(reddit_buf, ns, tns, lines, marks, things, 0)
-            local c_lines, c_marks, c_things = render.listing(comments, endpoint, #lines)
-            util.draw(reddit_buf, ns, tns, c_lines, c_marks, c_things, #lines)
+            util.draw(reddit_buf, ns, tns, lines, marks, things, {}, 0)
+            local c_lines, c_marks, c_things, c_folds = render.listing(comments, endpoint, #lines)
+            util.draw(reddit_buf, ns, tns, c_lines, c_marks, c_things, c_folds, #lines)
         elseif endpoint.type == "about" then
             if endpoint.user then
                 --- TODO: user endpoints (not user subreddit, maybe should be normalized)
@@ -151,7 +153,7 @@ function M.open(path)
                 ---@type NvimReddit.Subreddit
                 local subreddit = response.data
                 local lines, marks = render.sidebar(subreddit)
-                util.draw(reddit_buf, ns, tns, lines, marks, {}, 0)
+                util.draw(reddit_buf, ns, tns, lines, marks, {}, {}, 0)
             end
         end
 

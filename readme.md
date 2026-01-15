@@ -5,6 +5,8 @@ todo:
   - handle sup better
   - handle pre element
   - handle table element
+  - fix blockquotes
+    - newlines and other things (hr) inside mess things up
 - better configuration
   - configurable highlights
   - configurable margins
@@ -15,6 +17,7 @@ todo:
   - handle crossposts
     - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
 - handle rich:video and similar
+- disable the html encoding stuff
 - support contest mode
 - only show link with sticked text on subreddit
 - figure out why virtual padding sometimes isn't displayed until a redraw (probably image.nvim's fault)
@@ -31,6 +34,7 @@ todo:
   - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)
   - handle case when single line that is supposed to wrap adds blank line
 - indicate whether link is expandable
+- maybe have custom fold text
 - maybe render directly instead of rendering text and shifting it around (luajit is very fast :)
 - maybe show thumbnails? (probably not)
 - maybe do something different with gifs? (we are often provided an mp4, after all)

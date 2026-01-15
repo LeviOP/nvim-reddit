@@ -25,6 +25,7 @@
 ---@field media NvimReddit.Image|nil
 ---@field open boolean|nil
 ---@field player_job vim.SystemObj|nil
+---@field mark integer|nil
 
 ---@class (exact) NvimReddit.Link
 ---@field data NvimReddit.LinkData
@@ -36,6 +37,7 @@
 ---@field domain_url string|nil
 ---@field gallery_selected integer|nil
 ---@field player_job vim.SystemObj|nil
+---@field mark integer|nil
 
 ---@class (exact) NvimReddit.Subreddit
 ---@field data NvimReddit.SubredditData

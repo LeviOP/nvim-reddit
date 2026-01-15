@@ -179,8 +179,9 @@ end
 ---@param lines string[]
 ---@param marks NvimReddit.Mark[]
 ---@param things NvimReddit.ThingMark[]
+---@param folds NvimReddit.Fold[]
 ---@param line integer
-function M.draw(reddit_buf, ns, tns, lines, marks, things, line)
+function M.draw(reddit_buf, ns, tns, lines, marks, things, folds, line)
     vim.api.nvim_buf_set_lines(reddit_buf.buffer, line, -1, false, lines)
     for _, mark in ipairs(marks) do
         mark.details.end_row = mark.line
@@ -194,7 +195,14 @@ function M.draw(reddit_buf, ns, tns, lines, marks, things, line)
             strict = false
         })
         reddit_buf.mark_thing_map[mark] = thing.thing
+        thing.thing.mark = mark
     end
+    vim.api.nvim_buf_call(reddit_buf.buffer, function()
+        for _, fold in ipairs(folds) do
+            vim.cmd(fold.start_line + 1 .. "," .. fold.end_line + 1 .. "fold")
+        end
+        vim.api.nvim_set_option_value("foldlevel", 99, { win = 0 })
+    end)
 end
 
 return M

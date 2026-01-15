@@ -16,6 +16,17 @@ local REDDIT_BASE = "https://www.reddit.com"
 
 local M = {}
 
+---@param thing NvimReddit.Comment
+---@return NvimReddit.Comment
+local function get_bottom_comment(thing)
+    if thing.data.replies == "" then
+        return thing
+    else
+        local last = thing.data.replies.data.children[#thing.data.replies.data.children] --[[@as NvimReddit.Comment]]
+        return get_bottom_comment(last)
+    end
+end
+
 ---@param thing NvimReddit.Votable
 ---@param reddit_buf NvimReddit.Buffer
 ---@param dir 1|0|-1
@@ -50,6 +61,23 @@ local function vote(thing, reddit_buf, dir)
         end_row = thing_mark.start_line + thing_mark.lines + row,
         end_col = 0
     })
+    if thing.kind == "t1" then
+        local bottom = get_bottom_comment(thing)
+        local _, _, bottom_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, bottom.mark, { details = true }))
+        vim.api.nvim_buf_call(reddit_buf.buffer, function()
+            local view = vim.fn.winsaveview()
+            vim.cmd("keepjumps " .. row + 1)
+            vim.cmd("normal! zd")
+
+            local win = vim.api.nvim_get_current_win()
+            vim.wo[win].foldenable = false
+            vim.cmd(row + 1 .. "," .. bottom_details.end_row .. "fold")
+            vim.wo[win].foldenable = true
+            vim.cmd("normal! zo")
+
+            vim.fn.winrestview(view)
+        end)
+   end
 
     local image = reddit_buf.images[thing.data.id]
     if image then
