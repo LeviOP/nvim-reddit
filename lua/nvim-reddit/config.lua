@@ -12,6 +12,8 @@ local util = require("nvim-reddit.util")
 ---@field spacing NvimReddit.SpacingConfig
 ---@field render_offset_top integer
 ---@field player_options string[]
+---@field player_onexit fun(out: vim.SystemCompleted)?
+---@field icons boolean
 local M = {}
 
 ---@alias NvimReddit.Keymap { [1]: string, [2]: string, [3]: fun(thing: NvimReddit.Selectable, reddit_buf: NvimReddit.Buffer) }
@@ -124,6 +126,7 @@ function M.defaults()
             {"n", "gd", actions.open_domain},
             {"n", "gc", actions.open_context},
             {"n", "gC", actions.open_full_context},
+            {"n", "<CR>", actions.enter},
         },
         spacing = {
             score_margin = 6,
@@ -131,6 +134,17 @@ function M.defaults()
         },
         render_offset_top = 0,
         player_options = {"mpv", "--keep-open=yes", "--loop=inf", "--x11-name=mpv-float"},
+        player_onexit = function (out)
+            if out.code == 0 then return end
+            if out.stderr ~= "" then
+                vim.print(out.stderr)
+            elseif out.stdout ~= "" then
+                vim.print(out.stdout)
+            else
+                vim.print("Player closed with non-zero exit code but no output")
+            end
+        end,
+        icons = true,
     }
     return defaults
 end

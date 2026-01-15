@@ -4,6 +4,7 @@
 ---| NvimReddit.Listing
 ---| NvimReddit.Comment
 ---| NvimReddit.Link
+---| NvimReddit.More
 
 ---@alias NvimReddit.Votable
 ---| NvimReddit.Comment
@@ -12,6 +13,7 @@
 ---@alias NvimReddit.Selectable
 ---| NvimReddit.Comment
 ---| NvimReddit.Link
+---| NvimReddit.More
 
 ---@class (exact) NvimReddit.Listing
 ---@field data NvimReddit.ListingData
@@ -46,7 +48,7 @@
 ---@class (exact) NvimReddit.ListingData
 ---@field before string | null
 ---@field children (NvimReddit.Thing)[]
----@field dist integer
+---@field dist integer | null
 ---@field after string | null
 
 ---@class (exact) NvimReddit.LinkData
@@ -433,3 +435,18 @@
 ---@field whitelist_status string
 ---@field wiki_enabled boolean
 ---@field wls number
+
+---@class (exact) NvimReddit.More
+---@field data NvimReddit.MoreData
+---@field kind "more"
+---@field padding integer|nil
+---@field link_id string|nil
+---@field parent NvimReddit.Comment|nil
+
+---@class (exact) NvimReddit.MoreData
+---@field children string[]
+---@field count integer
+---@field depth integer
+---@field id string
+---@field name string
+---@field parent_id string

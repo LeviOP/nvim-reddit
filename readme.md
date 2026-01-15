@@ -16,6 +16,7 @@ todo:
   - add progress indicator to gallery
   - handle crossposts
     - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
+- reconstruct more comments and render parent all at once to fix folds and normalize workflow
 - handle rich:video and similar
 - disable the html encoding stuff
 - support contest mode
@@ -43,4 +44,4 @@ todo:
 - add "hovers" for various stuff
 - support mouse
 - handle `kind: "more"` (and others) correctly
-- handle custom emojis
+- maybe handle custom emojis

@@ -102,3 +102,7 @@ vim.api.nvim_set_hl(0, "RedditBlockquote", {
 vim.api.nvim_set_hl(0, "RedditBlockquotePad", {
     link = "RedditBlockquote"
 })
+
+vim.api.nvim_set_hl(0, "RedditMore", {
+    bold = true
+})

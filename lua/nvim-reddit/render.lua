@@ -965,13 +965,21 @@ function M.comment(thing, render_children)
         end
 
         for _, child in ipairs(comment.replies.data.children) do
-            if child.kind ~= "t1" then
-                print("woah.. what is this kind?!:", child.kind)
+            local child_lines, child_marks, child_things, child_folds
+            if child.kind == "t1" then
+                child.padding = thing.padding + 2
+                child_lines, child_marks, child_things, child_folds = M.comment(child, true)
+            elseif child.kind == "more" then
+                child.padding = thing.padding + 2
+                child.link_id = thing.data.link_id
+                child.parent = thing
+                child_lines, child_marks, child_things, child_folds = M.more(child)
+            else
+                print("Unexpected kind in replies children:", child.kind)
                 goto continue
             end
+
             table.insert(rendered_lines, "")
-            child.padding = thing.padding + 2
-            local child_lines, child_marks, child_things, child_folds = M.comment(child, true)
             for _, child_line in ipairs(child_lines) do
                 table.insert(rendered_lines, child_line)
             end
@@ -1000,6 +1008,37 @@ function M.comment(thing, render_children)
     })
 
     return rendered_lines, marks, things, folds
+end
+
+---@param thing NvimReddit.More
+---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.Fold[]
+function M.more(thing)
+    local count = thing.data.count
+    ---@type NvimReddit.Line[]
+    local lines = {{
+        {
+            (" "):rep(math.max(thing.padding - 1, 0)),
+            condition = thing.padding ~= 0,
+        },
+        {
+            "load more comments",
+            marks = {{ hl_group = "RedditMore" }}
+        },
+        {
+            count .. (count == 1 and " reply" or " replies"),
+            pre = "(",
+            post = ")",
+        },
+    }}
+    local rendered_lines, marks = M.lines(lines)
+    ---@type NvimReddit.ThingMark[]
+    local things = {{
+        start_line = 0,
+        lines = #rendered_lines,
+        thing = thing
+    }}
+
+    return rendered_lines, marks, things, {}
 end
 
 ---@param thing NvimReddit.Subreddit

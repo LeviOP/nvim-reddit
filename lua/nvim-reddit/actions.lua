@@ -96,10 +96,9 @@ end
 ---@param thing NvimReddit.Selectable
 ---@param reddit_buf NvimReddit.Buffer
 function M.upvote(thing, reddit_buf)
-    -- NvimReddit.Selectable and NvimReddit.Votable are the same right now, but they aren't always
-    -- if thing.kind ~= "t1" and thing.kind ~= "t3" then
-    --     return
-    -- end ---@cast thing NvimReddit.Votable
+    if thing.kind ~= "t1" and thing.kind ~= "t3" then
+        return
+    end ---@cast thing NvimReddit.Votable
 
     local dir
     if thing.data.likes == true then
@@ -118,10 +117,9 @@ end
 ---@param thing NvimReddit.Selectable
 ---@param reddit_buf NvimReddit.Buffer
 function M.downvote(thing, reddit_buf)
-    -- NvimReddit.Selectable and NvimReddit.Votable are the same right now, but they aren't always
-    -- if thing.kind ~= "t1" and thing.kind ~= "t3" then
-    --     return
-    -- end ---@cast thing NvimReddit.Votable
+    if thing.kind ~= "t1" and thing.kind ~= "t3" then
+        return
+    end ---@cast thing NvimReddit.Votable
 
     local dir
     if thing.data.likes == false then
@@ -151,6 +149,10 @@ end
 ---@param thing NvimReddit.Selectable
 ---@param reddit_buf NvimReddit.Buffer
 function M.expand(thing, reddit_buf)
+    --- FIXME: this function's codepath is stupid
+    if thing.kind == "more" then
+        return
+    end
     ---@type integer, _, vim.api.keyset.extmark_details
     local thing_mark_start, _, thing_mark_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true }))
     local thing_mark_end = thing_mark_details.end_row
@@ -237,7 +239,7 @@ function M.expand(thing, reddit_buf)
                             local player_args = {}
                             for i, arg in ipairs(config.player_options) do player_args[i] = arg end
                             table.insert(player_args, html.decode(thing.data.secure_media.reddit_video.dash_url))
-                            thing.player_job = vim.system(player_args)
+                            thing.player_job = vim.system(player_args, nil, config.player_onexit)
                         end
                     end
                 end
@@ -343,11 +345,17 @@ end
 
 ---@param thing NvimReddit.Selectable
 function M.permalink(thing)
+    if thing.kind == "more" then
+        return
+    end
     vim.ui.open(REDDIT_BASE .. thing.data.permalink)
 end
 
 ---@param thing NvimReddit.Selectable
 function M.open_subreddit(thing)
+    if thing.kind == "more" then
+        return
+    end
     vim.async.run(function()
         buffer.open(thing.data.subreddit_name_prefixed)
     end):wait()
@@ -355,6 +363,9 @@ end
 
 ---@param thing NvimReddit.Selectable
 function M.open_user(thing)
+    if thing.kind == "more" then
+        return
+    end
     vim.async.run(function()
         buffer.open("user/" .. thing.data.author)
     end):wait()
@@ -442,6 +453,9 @@ end
 
 ---@param thing NvimReddit.Selectable
 function M.yank_permalink(thing)
+    if thing.kind == "more" then
+        return
+    end
     local register = vim.v.register
     local permalink = REDDIT_BASE .. thing.data.permalink
     vim.fn.setreg(register, permalink)
@@ -467,6 +481,107 @@ function M.open_full_context(thing)
     vim.async.run(function()
         buffer.open(thing.data.permalink:sub(2) .. "?context=10000")
     end):wait()
+end
+
+---@param thing NvimReddit.More
+---@param reddit_buf NvimReddit.Buffer
+local function load_more_comments(thing, reddit_buf)
+    vim.async.run(function()
+        ---@type NvimReddit.FetchResponse, NvimReddit.RedditError|nil
+        local response, err = vim.async.await(
+            3,
+            state.reddit.fetch,
+            state.reddit,
+            "api/morechildren?api_type=json&children=" .. table.concat(thing.data.children, ",") .. "&link_id=" .. thing.link_id
+        ) ---@diagnostic disable-line: param-type-mismatch, assign-type-mismatch
+        if err then
+            vim.print(err)
+            return
+        end
+        ---@type table<string, NvimReddit.Comment>
+        local id_cache = {
+            [thing.parent.kind .. "_" .. thing.parent.data.id] = thing.parent
+        }
+
+        vim.schedule(function()
+            vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
+            -- remove more thing
+            local row = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, {}))
+            vim.api.nvim_buf_set_lines(reddit_buf.buffer, row - 1, row + 1, false, {})
+            vim.api.nvim_buf_del_extmark(reddit_buf.buffer, tns, reddit_buf.selected_mark_id)
+            reddit_buf.mark_thing_map[reddit_buf.selected_mark_id] = nil
+            reddit_buf.selected_mark_id = nil
+
+            row = row - 1
+
+            ---@type NvimReddit.Comment[]
+            local comments = response.data.json.data.things
+            for _, comment in ipairs(comments) do
+                local parent = id_cache[comment.data.parent_id]
+                if parent == nil then
+                    print("couldn't find parent?????")
+                    goto continue
+                end
+                if parent.data.replies == "" then
+                    parent.data.replies = {
+                        kind = "Listing",
+                        data = {
+                            children = {},
+                            after = vim.NIL,
+                            before = vim.NIL,
+                            dist = vim.NIL,
+                        }
+                    }
+                end
+                table.insert(parent.data.replies.data.children, comment)
+                id_cache[comment.kind .. "_" .. comment.data.id] = comment
+                if comment.data.parent_id == thing.parent.data.id then
+                    comment.padding = parent.padding
+                else
+                    comment.padding = parent.padding + 2
+                end
+                local thing_lines, thing_style_marks, thing_marks, thing_folds = render.comment(comment, false)
+
+                vim.api.nvim_buf_set_lines(reddit_buf.buffer, row, row, false, {""})
+                row = row + 1
+                vim.api.nvim_buf_set_lines(reddit_buf.buffer, row, row, false, thing_lines)
+                for _, style_mark in ipairs(thing_style_marks) do
+                    style_mark.details.end_row = style_mark.line + row
+                    style_mark.details.end_col = style_mark.end_col
+                    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, style_mark.line + row, style_mark.start_col, style_mark.details)
+                end
+                for _, thing_mark in ipairs(thing_marks) do
+                    local mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, tns, thing_mark.start_line + row, 0, {
+                        end_row = thing_mark.start_line + thing_mark.lines + row,
+                        end_col = 0,
+                        strict = false
+                    })
+                    reddit_buf.mark_thing_map[mark] = thing_mark.thing
+                    thing_mark.thing.mark = mark
+                end
+                vim.api.nvim_buf_call(reddit_buf.buffer, function()
+                    for _, fold in ipairs(thing_folds) do
+                        vim.cmd(fold.start_line + row + 1 .. "," .. fold.end_line + row + 1 .. "fold")
+                        vim.api.nvim_win_set_cursor(0, {row + 1, 0})
+                        vim.cmd("normal! zo")
+                    end
+                end)
+                row = row + #thing_lines
+                ::continue::
+            end
+            vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+        end)
+    end):wait()
+end
+
+---@param thing NvimReddit.Selectable
+---@param reddit_buf NvimReddit.Buffer
+function M.enter(thing, reddit_buf)
+    if thing.kind == "more" then
+        load_more_comments(thing, reddit_buf)
+    else
+        print("no enter action on this thing")
+    end
 end
 
 return M
