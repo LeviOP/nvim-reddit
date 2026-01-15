@@ -122,6 +122,8 @@ function M.defaults()
             {"n", "]g", actions.gallery_next},
             {"n", "[g", actions.gallery_prev},
             {"n", "gd", actions.open_domain},
+            {"n", "gc", actions.open_context},
+            {"n", "gC", actions.open_full_context},
         },
         spacing = {
             score_margin = 6,

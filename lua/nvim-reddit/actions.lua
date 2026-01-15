@@ -447,4 +447,26 @@ function M.yank_permalink(thing)
     vim.fn.setreg(register, permalink)
 end
 
+---@param thing NvimReddit.Selectable
+function M.open_context(thing)
+    if thing.kind ~= "t1" then
+        print("not a comment")
+        return
+    end
+    vim.async.run(function()
+        buffer.open(thing.data.permalink:sub(2) .. "?context=3")
+    end):wait()
+end
+
+---@param thing NvimReddit.Selectable
+function M.open_full_context(thing)
+    if thing.kind ~= "t1" then
+        print("not a comment")
+        return
+    end
+    vim.async.run(function()
+        buffer.open(thing.data.permalink:sub(2) .. "?context=10000")
+    end):wait()
+end
+
 return M
