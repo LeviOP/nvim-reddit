@@ -17,13 +17,19 @@ local M = {}
 ---@field selected_mark_id integer|nil
 ---@field images table<string, Image>
 
+---@param reddit_buf NvimReddit.Buffer
 local function cursor_moved(reddit_buf)
     local cursor = vim.api.nvim_win_get_cursor(0);
     local pos = { cursor[1] - 1, cursor[2] }
     local buf_marks = vim.api.nvim_buf_get_extmarks(reddit_buf.buffer, tns, pos, pos, { details = true, overlap = true })
     local mark_count = #buf_marks
     if mark_count ~= 1 then
-        if mark_count > 1 then print("we found more than one mark for this thing???") end
+        if mark_count > 1 then
+            print("we found more than one mark for this thing???")
+            for _, buf_mark in ipairs(buf_marks) do
+                vim.print(buf_mark[1], reddit_buf.mark_thing_map[buf_mark[1]]);
+            end
+        end
         return
     end
     local id, row, col, details = unpack(buf_marks[1])
@@ -61,9 +67,11 @@ function M.open(path)
     vim.api.nvim_set_option_value("filetype", "reddit", { buf = buffer })
     vim.api.nvim_set_option_value("buftype", "nofile", { buf = buffer })
     vim.api.nvim_set_option_value("swapfile", false, { buf = buffer })
-    -- vim.api.nvim_set_option_value("foldmethod", "manual", { win = 0 })
-    -- vim.api.nvim_set_option_value("foldtext", "v:...", { win = 0 })
     vim.api.nvim_buf_set_name(buffer, "reddit://" .. path)
+
+    -- FIXME: window stuff should maybe be separate in the future (sidebar)
+    vim.api.nvim_set_option_value("foldmethod", "expr", { win = 0 })
+    vim.api.nvim_set_option_value("foldexpr", "v:lua.require'nvim-reddit.fold'()", { win = 0 })
 
     vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {
         "Loading..."
@@ -78,6 +86,8 @@ function M.open(path)
         selected_mark_id = nil,
         images = {}
     }
+
+    state.folds[buffer] = {}
 
     if state.reddit == nil then
         local reddit_api_path = vim.fs.joinpath(config.data_dir, "api.json")
@@ -119,8 +129,8 @@ function M.open(path)
         if endpoint.type == "listing" then
             ---@type NvimReddit.Listing
             local listing = response.data
-            local lines, marks, things, folds = render.listing(listing, endpoint)
-            util.draw(reddit_buf, ns, tns, lines, marks, things, folds, 0)
+            local lines, marks, things, foldlevels = render.listing(listing, endpoint)
+            util.draw(reddit_buf, ns, tns, lines, marks, things, foldlevels, 0)
         elseif endpoint.type == "article" then
             ---@type NvimReddit.Link
             local link = response.data[1].data.children[1]
@@ -140,11 +150,12 @@ function M.open(path)
             end
             link.show_subreddit = endpoint.subreddit ~= link.data.subreddit
 
-            local lines, marks, things = render.link(link)
+            local lines, marks, things, foldlevels = render.link(link)
             table.insert(lines, "")
-            util.draw(reddit_buf, ns, tns, lines, marks, things, {}, 0)
-            local c_lines, c_marks, c_things, c_folds = render.listing(comments, endpoint, #lines)
-            util.draw(reddit_buf, ns, tns, c_lines, c_marks, c_things, c_folds, #lines)
+            table.insert(foldlevels, 0)
+            util.draw(reddit_buf, ns, tns, lines, marks, things, foldlevels, 0)
+            local c_lines, c_marks, c_things, c_foldlevels = render.listing(comments, endpoint, #lines)
+            util.draw(reddit_buf, ns, tns, c_lines, c_marks, c_things, c_foldlevels, #lines)
         elseif endpoint.type == "about" then
             if endpoint.user then
                 --- TODO: user endpoints (not user subreddit, maybe should be normalized)

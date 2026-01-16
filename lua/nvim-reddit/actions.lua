@@ -16,17 +16,6 @@ local REDDIT_BASE = "https://www.reddit.com"
 
 local M = {}
 
----@param thing NvimReddit.Comment
----@return NvimReddit.Comment
-local function get_bottom_comment(thing)
-    if thing.data.replies == "" then
-        return thing
-    else
-        local last = thing.data.replies.data.children[#thing.data.replies.data.children] --[[@as NvimReddit.Comment]]
-        return get_bottom_comment(last)
-    end
-end
-
 ---@param thing NvimReddit.Votable
 ---@param reddit_buf NvimReddit.Buffer
 ---@param dir 1|0|-1
@@ -61,23 +50,6 @@ local function vote(thing, reddit_buf, dir)
         end_row = thing_mark.start_line + thing_mark.lines + row,
         end_col = 0
     })
-    if thing.kind == "t1" then
-        local bottom = get_bottom_comment(thing)
-        local _, _, bottom_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, bottom.mark, { details = true }))
-        vim.api.nvim_buf_call(reddit_buf.buffer, function()
-            local view = vim.fn.winsaveview()
-            vim.cmd("keepjumps " .. row + 1)
-            vim.cmd("normal! zd")
-
-            local win = vim.api.nvim_get_current_win()
-            vim.wo[win].foldenable = false
-            vim.cmd(row + 1 .. "," .. bottom_details.end_row .. "fold")
-            vim.wo[win].foldenable = true
-            vim.cmd("normal! zo")
-
-            vim.fn.winrestview(view)
-        end)
-   end
 
     local image = reddit_buf.images[thing.data.id]
     if image then
@@ -302,19 +274,19 @@ function M.expand(thing, reddit_buf)
                 for i, v in ipairs(lines) do
                     lines[i] = (" "):rep(margin) .. v
                 end
-                vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end+line_num, thing_mark_end+line_num, false, lines)
+                vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end + line_num, thing_mark_end + line_num, false, lines)
                 for _, mark in ipairs(marks) do
                     mark.details.priority = mark.details.priority or 100
-                    mark.details.end_row = thing_mark_end+line_num+mark.line
-                    mark.details.end_col = mark.end_col+margin
-                    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end+line_num+mark.line, mark.start_col+margin, mark.details)
+                    mark.details.end_row = thing_mark_end + line_num + mark.line
+                    mark.details.end_col = mark.end_col + margin
+                    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end + line_num + mark.line, mark.start_col + margin, mark.details)
                 end
                 line_num = line_num + #lines
             end
 
             thing.expando_mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end, 0, {
                 id = thing.expando_mark,
-                end_row = thing_mark_end+line_num,
+                end_row = thing_mark_end + line_num,
             })
 
             thing.open = true
@@ -427,7 +399,7 @@ end
 ---@param thing NvimReddit.Selectable
 ---@param reddit_buf NvimReddit.Buffer
 function M.gallery_next(thing, reddit_buf)
-    vim.async.run(function ()
+    vim.async.run(function()
         gallery_nav(thing, reddit_buf, 1)
     end):wait()
 end
@@ -435,7 +407,7 @@ end
 ---@param thing NvimReddit.Selectable
 ---@param reddit_buf NvimReddit.Buffer
 function M.gallery_prev(thing, reddit_buf)
-    vim.async.run(function ()
+    vim.async.run(function()
         gallery_nav(thing, reddit_buf, -1)
     end):wait()
 end
@@ -505,14 +477,14 @@ local function load_more_comments(thing, reddit_buf)
 
         vim.schedule(function()
             vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
-            -- remove more thing
-            local row = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, {}))
-            vim.api.nvim_buf_set_lines(reddit_buf.buffer, row - 1, row + 1, false, {})
-            vim.api.nvim_buf_del_extmark(reddit_buf.buffer, tns, reddit_buf.selected_mark_id)
-            reddit_buf.mark_thing_map[reddit_buf.selected_mark_id] = nil
-            reddit_buf.selected_mark_id = nil
 
-            row = row - 1
+            -- remove more from parent comment
+            for i, child in ipairs(thing.parent.data.replies.data.children) do
+                if child.kind == "more" then
+                    table.remove(thing.parent.data.replies.data.children, i)
+                    break
+                end
+            end
 
             ---@type NvimReddit.Comment[]
             local comments = response.data.json.data.things
@@ -535,40 +507,59 @@ local function load_more_comments(thing, reddit_buf)
                 end
                 table.insert(parent.data.replies.data.children, comment)
                 id_cache[comment.kind .. "_" .. comment.data.id] = comment
-                if comment.data.parent_id == thing.parent.data.id then
-                    comment.padding = parent.padding
-                else
-                    comment.padding = parent.padding + 2
-                end
-                local thing_lines, thing_style_marks, thing_marks, thing_folds = render.comment(comment, false)
-
-                vim.api.nvim_buf_set_lines(reddit_buf.buffer, row, row, false, {""})
-                row = row + 1
-                vim.api.nvim_buf_set_lines(reddit_buf.buffer, row, row, false, thing_lines)
-                for _, style_mark in ipairs(thing_style_marks) do
-                    style_mark.details.end_row = style_mark.line + row
-                    style_mark.details.end_col = style_mark.end_col
-                    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, style_mark.line + row, style_mark.start_col, style_mark.details)
-                end
-                for _, thing_mark in ipairs(thing_marks) do
-                    local mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, tns, thing_mark.start_line + row, 0, {
-                        end_row = thing_mark.start_line + thing_mark.lines + row,
-                        end_col = 0,
-                        strict = false
-                    })
-                    reddit_buf.mark_thing_map[mark] = thing_mark.thing
-                    thing_mark.thing.mark = mark
-                end
-                vim.api.nvim_buf_call(reddit_buf.buffer, function()
-                    for _, fold in ipairs(thing_folds) do
-                        vim.cmd(fold.start_line + row + 1 .. "," .. fold.end_line + row + 1 .. "fold")
-                        vim.api.nvim_win_set_cursor(0, {row + 1, 0})
-                        vim.cmd("normal! zo")
-                    end
-                end)
-                row = row + #thing_lines
                 ::continue::
             end
+
+            local thing_lines, thing_style_marks, thing_marks, thing_foldlevels = render.comment(thing.parent, true)
+
+            local comment_start = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, thing.parent.mark, {}))
+            local comment_end = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, {})) + 1
+
+            -- remove more thing mark
+            vim.api.nvim_buf_del_extmark(reddit_buf.buffer, tns, reddit_buf.selected_mark_id)
+            reddit_buf.mark_thing_map[reddit_buf.selected_mark_id] = nil
+            reddit_buf.selected_mark_id = nil
+
+            local buffer_foldlevels = state.folds[reddit_buf.buffer]
+            local old_line_count = comment_end - comment_start
+            local new_line_count = #thing_foldlevels
+            print(old_line_count, new_line_count)
+            -- sometimes the "more" comments are deleted or removed or something, meaning there is actually less to render.
+            -- instead of handling that case directly (which could lead to other unforseen problems), we'll just check and render it correctly
+            if new_line_count > old_line_count then
+                for i, foldlevel in ipairs(thing_foldlevels) do
+                    if i <= old_line_count then
+                        buffer_foldlevels[i + comment_start] = foldlevel
+                    else
+                        table.insert(buffer_foldlevels, i + comment_start, foldlevel)
+                    end
+                end
+            else -- this case also runs when they're equal. convenient optimization :-)
+                for i, foldlevel in ipairs(thing_foldlevels) do
+                    buffer_foldlevels[i + comment_start] = foldlevel
+                end
+                util.array_remove_range(buffer_foldlevels, comment_start + new_line_count + 1, comment_end)
+            end
+
+            vim.api.nvim_buf_set_lines(reddit_buf.buffer, comment_start, comment_end, false, thing_lines)
+            for _, style_mark in ipairs(thing_style_marks) do
+                style_mark.details.end_row = style_mark.line + comment_start
+                style_mark.details.end_col = style_mark.end_col
+                vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, style_mark.line + comment_start, style_mark
+                .start_col, style_mark.details)
+            end
+            for _, thing_mark in ipairs(thing_marks) do
+                local mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, tns, thing_mark.start_line + comment_start,
+                    0, {
+                    id = thing_mark.thing.mark,
+                    end_row = thing_mark.start_line + thing_mark.lines + comment_start,
+                    end_col = 0,
+                    strict = false
+                })
+                reddit_buf.mark_thing_map[mark] = thing_mark.thing
+                thing_mark.thing.mark = mark
+            end
+
             vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
         end)
     end):wait()

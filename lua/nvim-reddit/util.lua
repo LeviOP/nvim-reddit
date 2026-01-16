@@ -179,9 +179,13 @@ end
 ---@param lines string[]
 ---@param marks NvimReddit.Mark[]
 ---@param things NvimReddit.ThingMark[]
----@param folds NvimReddit.Fold[]
+---@param foldlevels NvimReddit.FoldLevels
 ---@param line integer
-function M.draw(reddit_buf, ns, tns, lines, marks, things, folds, line)
+function M.draw(reddit_buf, ns, tns, lines, marks, things, foldlevels, line)
+    local buffer_foldlevels = require("nvim-reddit.state").folds[reddit_buf.buffer]
+    for _, foldlevel in ipairs(foldlevels) do
+        table.insert(buffer_foldlevels, foldlevel)
+    end
     vim.api.nvim_buf_set_lines(reddit_buf.buffer, line, -1, false, lines)
     for _, mark in ipairs(marks) do
         mark.details.end_row = mark.line
@@ -197,12 +201,21 @@ function M.draw(reddit_buf, ns, tns, lines, marks, things, folds, line)
         reddit_buf.mark_thing_map[mark] = thing.thing
         thing.thing.mark = mark
     end
-    vim.api.nvim_buf_call(reddit_buf.buffer, function()
-        for _, fold in ipairs(folds) do
-            vim.cmd(fold.start_line + 1 .. "," .. fold.end_line + 1 .. "fold")
-        end
-        vim.api.nvim_set_option_value("foldlevel", 99, { win = 0 })
-    end)
+end
+
+---@param array any[]
+---@param lower integer
+---@param upper integer
+function M.array_remove_range(array, lower, upper)
+    local n = #array
+    local write = lower
+    for read = upper + 1, n do
+        array[write] = array[read]
+        write = write + 1
+    end
+    for i = write, n do
+        array[i] = nil
+    end
 end
 
 return M
