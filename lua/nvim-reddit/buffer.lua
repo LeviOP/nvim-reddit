@@ -16,6 +16,7 @@ local M = {}
 ---@field mark_thing_map table<integer, NvimReddit.Selectable>
 ---@field selected_mark_id integer|nil
 ---@field images table<string, Image>
+---@field foldlevels NvimReddit.FoldLevels
 
 ---@param reddit_buf NvimReddit.Buffer
 local function cursor_moved(reddit_buf)
@@ -71,7 +72,8 @@ function M.open(path)
 
     -- FIXME: window stuff should maybe be separate in the future (sidebar)
     vim.api.nvim_set_option_value("foldmethod", "expr", { win = 0 })
-    vim.api.nvim_set_option_value("foldexpr", "v:lua.require'nvim-reddit.fold'()", { win = 0 })
+    vim.api.nvim_set_option_value("foldexpr", "v:lua.require'nvim-reddit.fold'.expr()", { win = 0 })
+    vim.api.nvim_set_option_value("foldtext", "v:lua.require'nvim-reddit.fold'.text()", { win = 0 })
 
     vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {
         "Loading..."
@@ -84,10 +86,11 @@ function M.open(path)
         buffer = buffer,
         mark_thing_map = {},
         selected_mark_id = nil,
-        images = {}
+        images = {},
+        foldlevels = {},
     }
 
-    state.folds[buffer] = {}
+    state.buffers[buffer] = reddit_buf
 
     if state.reddit == nil then
         local reddit_api_path = vim.fs.joinpath(config.data_dir, "api.json")

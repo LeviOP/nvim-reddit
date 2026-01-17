@@ -185,7 +185,7 @@ end
 function M.draw(reddit_buf, ns, tns, lines, marks, things, foldlevels, start_line, end_line)
     end_line = end_line or -1
 
-    local buffer_foldlevels = require("nvim-reddit.state").folds[reddit_buf.buffer]
+    local buffer_foldlevels = reddit_buf.foldlevels
     local old_line_count = end_line - start_line
     local new_line_count = #foldlevels
     -- sometimes the "more" comments are deleted or removed or something, meaning there is actually less to render.

@@ -813,6 +813,13 @@ end
 ---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
 function M.comment(thing, render_children)
     local comment = thing.data
+    if not thing.time_ago then
+        thing.time_ago = util.time_ago(comment.created)
+        if comment.edited ~= false then
+            thing.time_ago = thing.time_ago .. "*"
+            thing.time_ago_edited = "(last edited " .. util.time_ago(comment.edited) .. ")"
+        end
+    end
     ---@type NvimReddit.Line[]
     local lines = {
         {
@@ -841,7 +848,7 @@ function M.comment(thing, render_children)
                 condition = comment.author_flair_text ~= vim.NIL,
             },
             {
-                comment.score .. " points",
+                comment.score .. " point" .. (comment.score == 1 and "" or "s"),
                 marks = {{ hl_group = "Bold" }},
                 condition = not comment.score_hidden,
             },
@@ -851,11 +858,11 @@ function M.comment(thing, render_children)
                 condition = comment.score_hidden,
             },
             {
-                util.time_ago(comment.created) .. (comment.edited ~= false and "*" or ""),
+                thing.time_ago,
                 marks = {{ hl_group = "RedditSecondary" }},
             },
             {
-                function() return "(last edited " .. util.time_ago(comment.edited) .. ")" end,
+                thing.time_ago_edited,
                 marks = {{ hl_group = "RedditSecondary" }},
                 condition = comment.edited ~= false,
             },

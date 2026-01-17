@@ -28,6 +28,8 @@
 ---@field open boolean|nil
 ---@field player_job vim.SystemObj|nil
 ---@field mark integer|nil
+---@field time_ago string|nil
+---@field time_ago_edited string|nil
 
 ---@class (exact) NvimReddit.Link
 ---@field data NvimReddit.LinkData

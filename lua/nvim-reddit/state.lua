@@ -3,11 +3,11 @@
 ---@field ns integer
 ---@field tns integer
 ---@field config NvimReddit.Config
----@field folds table<integer, table<integer, integer>>
+---@field buffers table<integer, NvimReddit.Buffer>
 local M = {
     ns = vim.api.nvim_create_namespace("nvim_reddit"),
     tns = vim.api.nvim_create_namespace("nvim_reddit_things"),
-    folds = {}
+    buffers = {}
 }
 
 return M
