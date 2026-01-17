@@ -3,10 +3,8 @@ local render = require("nvim-reddit.render")
 local state = require("nvim-reddit.state")
 local config = require("nvim-reddit.config")
 
-local ns = state.ns
 local tns = state.tns
 
-vim.async = require("async")
 ---@module "image"
 
 local M = {}
@@ -133,7 +131,7 @@ function M.open(path)
             ---@type NvimReddit.Listing
             local listing = response.data
             local lines, marks, things, foldlevels = render.listing(listing, endpoint)
-            util.draw(reddit_buf, ns, tns, lines, marks, things, foldlevels, 0)
+            util.draw(reddit_buf, lines, marks, things, foldlevels, 0)
         elseif endpoint.type == "article" then
             ---@type NvimReddit.Link
             local link = response.data[1].data.children[1]
@@ -156,9 +154,9 @@ function M.open(path)
             local lines, marks, things, foldlevels = render.link(link)
             table.insert(lines, "")
             table.insert(foldlevels, 0)
-            util.draw(reddit_buf, ns, tns, lines, marks, things, foldlevels, 0)
+            util.draw(reddit_buf, lines, marks, things, foldlevels, 0)
             local c_lines, c_marks, c_things, c_foldlevels = render.listing(comments, endpoint)
-            util.draw(reddit_buf, ns, tns, c_lines, c_marks, c_things, c_foldlevels, #lines)
+            util.draw(reddit_buf, c_lines, c_marks, c_things, c_foldlevels, #lines)
         elseif endpoint.type == "about" then
             if endpoint.user then
                 --- TODO: user endpoints (not user subreddit, maybe should be normalized)
@@ -167,7 +165,7 @@ function M.open(path)
                 ---@type NvimReddit.Subreddit
                 local subreddit = response.data
                 local lines, marks = render.sidebar(subreddit)
-                util.draw(reddit_buf, ns, tns, lines, marks, {}, {}, 0)
+                util.draw(reddit_buf, lines, marks, {}, {}, 0)
             end
         end
 

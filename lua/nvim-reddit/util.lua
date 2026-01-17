@@ -1,3 +1,8 @@
+local state = require("nvim-reddit.state")
+
+local ns = state.ns
+local tns = state.tns
+
 local uv = vim.uv
 
 local M = {}
@@ -174,15 +179,13 @@ end
 
 ---draw "rendered" (formatted) lines along with their marks to a buffer
 ---@param reddit_buf NvimReddit.Buffer
----@param ns integer
----@param tns integer
 ---@param lines string[]
 ---@param marks NvimReddit.Mark[]
 ---@param things NvimReddit.ThingMark[]
 ---@param foldlevels NvimReddit.FoldLevels
 ---@param start_line integer
 ---@param end_line? integer
-function M.draw(reddit_buf, ns, tns, lines, marks, things, foldlevels, start_line, end_line)
+function M.draw(reddit_buf, lines, marks, things, foldlevels, start_line, end_line)
     end_line = end_line or -1
 
     local buffer_foldlevels = reddit_buf.foldlevels

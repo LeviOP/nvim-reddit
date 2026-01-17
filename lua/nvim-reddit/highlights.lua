@@ -82,6 +82,10 @@ vim.api.nvim_set_hl(0, "RedditSelected", {
     link = "PmenuSel"
 })
 
+vim.api.nvim_set_hl(0, "RedditExpanded", {
+    link = "PmenuSbar"
+})
+
 vim.api.nvim_set_hl(0, "RedditFlair", {
     background = "#000000"
 })
