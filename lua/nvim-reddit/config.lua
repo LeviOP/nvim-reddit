@@ -135,6 +135,8 @@ function M.defaults()
         render_offset_top = 0,
         player_options = {"mpv", "--keep-open=yes", "--loop=inf", "--x11-name=mpv-float"},
         player_onexit = function (out)
+            -- mpv uses exit code 4 when quit due to a signal (which is how we kill it if closing expando)
+            if require("nvim-reddit.config").player_options[1] == "mpv" and out.code == 4 then return end
             if out.code == 0 then return end
             if out.stderr ~= "" then
                 vim.print(out.stderr)

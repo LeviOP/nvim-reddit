@@ -62,6 +62,10 @@ local function vote(thing, reddit_buf, dir)
         end)
     end
 
+    -- HACK: writing over existing text causes the folds after the current line to break for...
+    -- no reason? if we run zx that will fix it (which makes no sense) but it will open all folds.
+    -- setting the foldmethod again will fix it without opening folds
+    vim.api.nvim_set_option_value("foldmethod", "expr", { win = 0 })
     vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
 end
 
