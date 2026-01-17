@@ -35,11 +35,10 @@ todo:
   - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)
   - handle case when single line that is supposed to wrap adds blank line
 - indicate whether link is expandable
-- maybe have custom fold text
 - maybe render directly instead of rendering text and shifting it around (luajit is very fast :)
 - maybe show thumbnails? (probably not)
 - maybe do something different with gifs? (we are often provided an mp4, after all)
-- show comment depth parenting
+- maybe show comment depth / parenting with background color change or "tree lines"
 - differentiate deleted links / comments
 - add "hovers" for various stuff
 - support mouse

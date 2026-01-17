@@ -278,6 +278,15 @@ function M.expand(thing, reddit_buf)
                 for i, v in ipairs(lines) do
                     lines[i] = (" "):rep(margin) .. v
                 end
+
+                local rendered_line_count = #lines
+
+                -- FIXME: repeated table.insert is needlessly slow (and in other places)
+                local buffer_foldlevels = reddit_buf.foldlevels
+                for _ = thing_mark_end, thing_mark_end + line_num + rendered_line_count - 1 do
+                    table.insert(buffer_foldlevels, thing_mark_end + 1, 0)
+                end
+
                 vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end + line_num, thing_mark_end + line_num, false, lines)
                 for _, mark in ipairs(marks) do
                     mark.details.priority = mark.details.priority or 100
@@ -285,7 +294,7 @@ function M.expand(thing, reddit_buf)
                     mark.details.end_col = mark.end_col + margin
                     vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end + line_num + mark.line, mark.start_col + margin, mark.details)
                 end
-                line_num = line_num + #lines
+                line_num = line_num + rendered_line_count
             end
 
             thing.expando_mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end, 0, {
@@ -294,7 +303,7 @@ function M.expand(thing, reddit_buf)
             })
 
             thing.open = true
-        else
+        else -- closing
             if thing.player_job then
                 thing.player_job:kill("sigterm")
                 thing.player_job = nil
@@ -303,7 +312,11 @@ function M.expand(thing, reddit_buf)
                 reddit_buf.images[thing.data.id]:clear()
                 reddit_buf.images[thing.data.id] = nil
             end
+
             local row, _, expando_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, ns, thing.expando_mark, { details = true }))
+
+            util.array_remove_range(reddit_buf.foldlevels, row + 1, expando_details.end_row)
+
             -- HACK: for some reason when an image is added (or maybe removed?) after
             -- the post is re-rendered due to voting, the end_row of the mark is set to 0
             if expando_details.end_row > row then
