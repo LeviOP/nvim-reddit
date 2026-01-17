@@ -180,19 +180,42 @@ end
 ---@param marks NvimReddit.Mark[]
 ---@param things NvimReddit.ThingMark[]
 ---@param foldlevels NvimReddit.FoldLevels
----@param line integer
-function M.draw(reddit_buf, ns, tns, lines, marks, things, foldlevels, line)
+---@param start_line integer
+---@param end_line? integer
+function M.draw(reddit_buf, ns, tns, lines, marks, things, foldlevels, start_line, end_line)
+    end_line = end_line or -1
+
     local buffer_foldlevels = require("nvim-reddit.state").folds[reddit_buf.buffer]
-    for _, foldlevel in ipairs(foldlevels) do
-        table.insert(buffer_foldlevels, foldlevel)
+    local old_line_count = end_line - start_line
+    local new_line_count = #foldlevels
+    -- sometimes the "more" comments are deleted or removed or something, meaning there is actually less to render.
+    -- instead of handling that case directly (which could lead to other unforseen problems), we'll just check and render it correctly
+    if new_line_count > old_line_count then
+        for i, foldlevel in ipairs(foldlevels) do
+            if i <= old_line_count then
+                buffer_foldlevels[i + start_line] = foldlevel
+            else
+                table.insert(buffer_foldlevels, i + start_line, foldlevel)
+            end
+        end
+    else -- this case also runs when they're equal. convenient optimization :-)
+        for i, foldlevel in ipairs(foldlevels) do
+            buffer_foldlevels[i + start_line] = foldlevel
+        end
+        M.array_remove_range(buffer_foldlevels, start_line + new_line_count + 1, end_line)
     end
-    vim.api.nvim_buf_set_lines(reddit_buf.buffer, line, -1, false, lines)
+
+    vim.api.nvim_buf_set_lines(reddit_buf.buffer, start_line, end_line, false, lines)
+
     for _, mark in ipairs(marks) do
+        mark.line = mark.line + start_line
         mark.details.end_row = mark.line
         mark.details.end_col = mark.end_col
         vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, mark.line, mark.start_col, mark.details)
     end
+
     for _, thing in ipairs(things) do
+        thing.start_line = thing.start_line + start_line
         local mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, tns, thing.start_line, 0, {
             end_row = thing.start_line + thing.lines,
             end_col = 0,

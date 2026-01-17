@@ -441,7 +441,8 @@
 ---@field kind "more"
 ---@field padding integer|nil
 ---@field link_id string|nil
----@field parent NvimReddit.Comment|nil
+---@field self_index integer|nil
+---@field parent NvimReddit.Comment|NvimReddit.Listing|nil
 
 ---@class (exact) NvimReddit.MoreData
 ---@field children string[]

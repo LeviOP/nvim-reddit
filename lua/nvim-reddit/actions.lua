@@ -455,111 +455,133 @@ function M.open_full_context(thing)
     end):wait()
 end
 
----@param thing NvimReddit.More
+---@param more NvimReddit.More
 ---@param reddit_buf NvimReddit.Buffer
-local function load_more_comments(thing, reddit_buf)
+local function load_more(more, reddit_buf)
     vim.async.run(function()
         ---@type NvimReddit.FetchResponse, NvimReddit.RedditError|nil
         local response, err = vim.async.await(
             3,
             state.reddit.fetch,
             state.reddit,
-            "api/morechildren?api_type=json&children=" .. table.concat(thing.data.children, ",") .. "&link_id=" .. thing.link_id
+            "api/morechildren?api_type=json&children=" .. table.concat(more.data.children, ",") .. "&link_id=" .. more.link_id
         ) ---@diagnostic disable-line: param-type-mismatch, assign-type-mismatch
         if err then
             vim.print(err)
             return
         end
-        ---@type table<string, NvimReddit.Comment>
-        local id_cache = {
-            [thing.parent.kind .. "_" .. thing.parent.data.id] = thing.parent
-        }
+        ---@type table<string, NvimReddit.Comment|NvimReddit.Listing>
+        local id_cache = {}
+        if more.parent.kind == "t1" then
+            id_cache["t1_" .. more.parent.data.id] = more.parent
+        else
+            id_cache[more.link_id] = more.parent
+        end
 
         vim.schedule(function()
-            vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
-
-            -- remove more from parent comment
-            for i, child in ipairs(thing.parent.data.replies.data.children) do
-                if child.kind == "more" then
-                    table.remove(thing.parent.data.replies.data.children, i)
-                    break
-                end
+            if more.parent.kind == "t1" then
+                table.remove(more.parent.data.replies.data.children, more.self_index)
+            else
+                table.remove(more.parent.data.children, more.self_index)
             end
 
-            ---@type NvimReddit.Comment[]
-            local comments = response.data.json.data.things
-            for _, comment in ipairs(comments) do
-                local parent = id_cache[comment.data.parent_id]
+            ---@type (NvimReddit.Comment|NvimReddit.More)[]
+            local base_things = {}
+
+            for _, thing in ipairs(response.data.json.data.things --[[@as (NvimReddit.Comment|NvimReddit.More)[] ]]) do
+                local parent = id_cache[thing.data.parent_id]
                 if parent == nil then
                     print("couldn't find parent?????")
                     goto continue
                 end
-                if parent.data.replies == "" then
-                    parent.data.replies = {
-                        kind = "Listing",
-                        data = {
-                            children = {},
-                            after = vim.NIL,
-                            before = vim.NIL,
-                            dist = vim.NIL,
+                if parent.kind == "t1" then
+                    if parent.data.replies == "" then
+                        parent.data.replies = {
+                            kind = "Listing",
+                            data = {
+                                children = {},
+                                after = vim.NIL,
+                                before = vim.NIL,
+                                dist = vim.NIL,
+                            }
                         }
-                    }
+                    end
+                    table.insert(parent.data.replies.data.children, thing)
+                    if parent == more.parent then
+                        thing.padding = parent.padding + 2
+                        table.insert(base_things, thing)
+                    end
+                else
+                    thing.padding = 0
+                    table.insert(parent.data.children, thing)
+                    table.insert(base_things, thing)
+                    if thing.kind == "more" then
+                        thing.link_id = thing.data.parent_id
+                        -- this should always be at the end of the array but why not calculate things to be sure? :-)
+                        thing.self_index = #parent.data.children
+                        thing.parent = parent
+                    end
                 end
-                table.insert(parent.data.replies.data.children, comment)
-                id_cache[comment.kind .. "_" .. comment.data.id] = comment
+                -- we don't need to cache mores because they can't have children
+                if thing.kind == "t1" then
+                    id_cache["t1_" .. thing.data.id] = thing
+                end
                 ::continue::
             end
 
-            local thing_lines, thing_style_marks, thing_marks, thing_foldlevels = render.comment(thing.parent, true)
+            -- base fold level (indent) for newly rendered things
+            local foldlevel = more.padding / 2
 
-            local comment_start = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, thing.parent.mark, {}))
-            local comment_end = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, {})) + 1
+            ---@type string[]
+            local lines = {}
+            ---@type NvimReddit.Mark[]
+            local marks = {}
+            ---@type NvimReddit.ThingMark[]
+            local things = {}
+            ---@type NvimReddit.FoldLevels
+            local foldlevels = {}
+            local line = 0
+            for _, thing in ipairs(base_things) do
+                local thing_lines, thing_style_marks, thing_marks, thing_foldlevels
+                if thing.kind == "t1" then
+                    thing_lines, thing_style_marks, thing_marks, thing_foldlevels = render.comment(thing, true)
+                else
+                    thing_lines, thing_style_marks, thing_marks, thing_foldlevels = render.more(thing)
+                end
+                for _, thing_line in ipairs(thing_lines) do
+                    table.insert(lines, thing_line)
+                end
+                for _, style_mark in ipairs(thing_style_marks) do
+                    style_mark.line = style_mark.line + line
+                    table.insert(marks, style_mark)
+                end
+                for _, thing_mark in ipairs(thing_marks) do
+                    thing_mark.start_line = thing_mark.start_line + line
+                    table.insert(things, thing_mark)
+                end
+                for _, thing_foldlevel in ipairs(thing_foldlevels) do
+                    table.insert(foldlevels, thing_foldlevel)
+                end
+                line = line + #thing_lines
+                table.insert(lines, "")
+                table.insert(foldlevels, foldlevel)
+                line = line + 1
+            end
+
+            -- remove trailing empty line. maybe this should be done some other way but.....
+            lines[#lines] = nil
+            foldlevels[#foldlevels] = nil
+
+            local start_line = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, {}))
+            local end_line = start_line + 1
 
             -- remove more thing mark
             vim.api.nvim_buf_del_extmark(reddit_buf.buffer, tns, reddit_buf.selected_mark_id)
             reddit_buf.mark_thing_map[reddit_buf.selected_mark_id] = nil
             reddit_buf.selected_mark_id = nil
 
-            local buffer_foldlevels = state.folds[reddit_buf.buffer]
-            local old_line_count = comment_end - comment_start
-            local new_line_count = #thing_foldlevels
-            print(old_line_count, new_line_count)
-            -- sometimes the "more" comments are deleted or removed or something, meaning there is actually less to render.
-            -- instead of handling that case directly (which could lead to other unforseen problems), we'll just check and render it correctly
-            if new_line_count > old_line_count then
-                for i, foldlevel in ipairs(thing_foldlevels) do
-                    if i <= old_line_count then
-                        buffer_foldlevels[i + comment_start] = foldlevel
-                    else
-                        table.insert(buffer_foldlevels, i + comment_start, foldlevel)
-                    end
-                end
-            else -- this case also runs when they're equal. convenient optimization :-)
-                for i, foldlevel in ipairs(thing_foldlevels) do
-                    buffer_foldlevels[i + comment_start] = foldlevel
-                end
-                util.array_remove_range(buffer_foldlevels, comment_start + new_line_count + 1, comment_end)
-            end
-
-            vim.api.nvim_buf_set_lines(reddit_buf.buffer, comment_start, comment_end, false, thing_lines)
-            for _, style_mark in ipairs(thing_style_marks) do
-                style_mark.details.end_row = style_mark.line + comment_start
-                style_mark.details.end_col = style_mark.end_col
-                vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, style_mark.line + comment_start, style_mark
-                .start_col, style_mark.details)
-            end
-            for _, thing_mark in ipairs(thing_marks) do
-                local mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, tns, thing_mark.start_line + comment_start,
-                    0, {
-                    id = thing_mark.thing.mark,
-                    end_row = thing_mark.start_line + thing_mark.lines + comment_start,
-                    end_col = 0,
-                    strict = false
-                })
-                reddit_buf.mark_thing_map[mark] = thing_mark.thing
-                thing_mark.thing.mark = mark
-            end
-
+            vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
+            util.draw(reddit_buf, ns, tns, lines, marks, things, foldlevels, start_line, end_line)
             vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
         end)
     end):wait()
@@ -569,7 +591,7 @@ end
 ---@param reddit_buf NvimReddit.Buffer
 function M.enter(thing, reddit_buf)
     if thing.kind == "more" then
-        load_more_comments(thing, reddit_buf)
+        load_more(thing, reddit_buf)
     else
         print("no enter action on this thing")
     end

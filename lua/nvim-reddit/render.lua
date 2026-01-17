@@ -977,7 +977,7 @@ function M.comment(thing, render_children)
             return rendered_lines, marks, things, {}
         end
 
-        for _, child in ipairs(comment.replies.data.children) do
+        for i, child in ipairs(comment.replies.data.children) do
             local child_lines, child_marks, child_things, child_foldlevels
             if child.kind == "t1" then
                 child.padding = thing.padding + 2
@@ -985,6 +985,7 @@ function M.comment(thing, render_children)
             elseif child.kind == "more" then
                 child.padding = thing.padding + 2
                 child.link_id = thing.data.link_id
+                child.self_index = i
                 child.parent = thing
                 child_lines, child_marks, child_things, child_foldlevels = M.more(child)
             else
@@ -1078,9 +1079,8 @@ end
 
 ---@param listing NvimReddit.Listing
 ---@param endpoint NvimReddit.ParsedEndpoint
----@param start_line? integer
 ---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
-function M.listing(listing, endpoint, start_line)
+function M.listing(listing, endpoint)
     ---@type string[]
     local lines = {}
     ---@type NvimReddit.Mark[]
@@ -1089,8 +1089,8 @@ function M.listing(listing, endpoint, start_line)
     local things = {}
     ---@type NvimReddit.FoldLevels
     local foldlevels = {}
-    local line = start_line or 0
-    for _, thing in ipairs(listing.data.children) do
+    local line = 0
+    for i, thing in ipairs(listing.data.children) do
         local thing_lines, thing_style_marks, thing_marks, thing_foldlevels
         if thing.kind == "t1" then
             thing.padding = 0
@@ -1106,6 +1106,12 @@ function M.listing(listing, endpoint, start_line)
             end
             thing.show_subreddit = endpoint.subreddit ~= thing.data.subreddit
             thing_lines, thing_style_marks, thing_marks, thing_foldlevels = M.link(thing)
+        elseif thing.kind == "more" then
+            thing.padding = 0
+            thing.link_id = thing.data.parent_id
+            thing.self_index = i
+            thing.parent = listing
+            thing_lines, thing_style_marks, thing_marks, thing_foldlevels = M.more(thing)
         else
             print("unhandled thing kind!:", thing.kind)
             goto continue

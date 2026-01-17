@@ -154,7 +154,7 @@ function M.open(path)
             table.insert(lines, "")
             table.insert(foldlevels, 0)
             util.draw(reddit_buf, ns, tns, lines, marks, things, foldlevels, 0)
-            local c_lines, c_marks, c_things, c_foldlevels = render.listing(comments, endpoint, #lines)
+            local c_lines, c_marks, c_things, c_foldlevels = render.listing(comments, endpoint)
             util.draw(reddit_buf, ns, tns, c_lines, c_marks, c_things, c_foldlevels, #lines)
         elseif endpoint.type == "about" then
             if endpoint.user then

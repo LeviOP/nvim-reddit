@@ -19,6 +19,7 @@ todo:
 - handle rich:video and similar
 - disable the html encoding stuff
 - support contest mode
+- maybe indicate when `more` children returned nothing
 - only show link with sticked text on subreddit
 - figure out why virtual padding sometimes isn't displayed until a redraw (probably image.nvim's fault)
 - handle buffer being open in multiple windows
