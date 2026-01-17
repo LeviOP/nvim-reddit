@@ -17,7 +17,6 @@ todo:
   - handle crossposts
     - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
 - handle rich:video and similar
-- disable the html encoding stuff
 - support contest mode
 - maybe indicate when `more` children returned nothing
 - only show link with sticked text on subreddit

@@ -663,7 +663,7 @@ function M.lines(lines)
                 end
                 if seg.mdhtml == true then ---@cast seg LineSegmentMDHTML
                     local width = util.get_window_text_width(0)
-                    local blocks = html.parse(html.decode(seg[1]))
+                    local blocks = html.parse(seg[1])
                     local col = vim.fn.strdisplaywidth(rendered_line)
                     local content_lines, content_marks = M.blocks(blocks, math.min(width - col, config.spacing.max_line_length))
                     for i, content_line in ipairs(content_lines) do
@@ -729,7 +729,7 @@ function M.link(thing)
                 marks = {{ hl_group = { "RedditUpvoted", condition = link.likes == true } }},
             },
             {
-                util.closure(html.decode, link.link_flair_text),
+                link.link_flair_text --[[@as string]],
                 condition = link.link_flair_text ~= vim.NIL,
                 marks = {{ hl_group = util.closure(get_flair_hl, link.subreddit, link.link_flair_text, link.link_flair_background_color) }}
             },
@@ -739,7 +739,7 @@ function M.link(thing)
                 marks = {{ hl_group = "RedditStickied" }}},
             -- apparently post titles are not santized on ingest, but at the client. there can be double spaces, newlines, etc.
             {
-                html.decode(link.title):gsub("%s+", " "),
+                link.title:gsub("%s+", " "),
                 marks = {{ hl_group = { "RedditStickied", condition = link.stickied }, url = link.url }},
             },
             {
@@ -843,7 +843,7 @@ function M.comment(thing, render_children)
                 },
             },
             {
-                function() return select(1, html.decode(comment.author_flair_text--[[@as string]]):gsub("%s+$", "")) end,
+                function() return select(1, (comment.author_flair_text--[[@as string]]):gsub("%s+$", "")) end,
                 marks = {{ hl_group = "RedditFlair" }},
                 condition = comment.author_flair_text ~= vim.NIL,
             },
@@ -927,9 +927,9 @@ function M.comment(thing, render_children)
                 for _, mark in ipairs(marks) do
                     ---@type string|nil
                     local url = mark.details.url
-                    if url and url == html.decode(media.s.u) then
+                    if url and url == media.s.u then
                         thing.media = {
-                            url = html.decode(media.s.u),
+                            url = media.s.u,
                             line = mark.line
                         }
                         -- This is a super duper hack. Doing it in any other way would be way more
@@ -948,7 +948,7 @@ function M.comment(thing, render_children)
                         local url = mark.details.url
                         if url and url == media.ext then
                             thing.media = {
-                                url = html.decode(media.s.gif),
+                                url = media.s.gif,
                                 line = mark.line,
                             }
                             goto found
@@ -957,9 +957,9 @@ function M.comment(thing, render_children)
                 else
                     for _, mark in ipairs(marks) do
                         local url = mark.details.url
-                        if url and url == html.decode(media.s.gif) then
+                        if url and url == media.s.gif then
                             thing.media = {
-                                url = html.decode(media.s.gif),
+                                url = media.s.gif,
                                 line = mark.line
                             }
                             local line = rendered_lines[mark.line + 1]

@@ -105,6 +105,13 @@ function M.open(path)
         vim.async.await(2, state.reddit.get_access_token, state.reddit)
     end
 
+    -- HACK: do actual query params parsing...
+    if path:find("?") then
+        path = path .. "&raw_json=1"
+    else
+        path = path .. "?raw_json=1"
+    end
+
     -- if I try to do this with disable-next-line, the type assertion just.. doesn't work. luals is really really really stupid
     ---@type NvimReddit.FetchResponse, NvimReddit.RedditError|nil
     local response, err = vim.async.await(3, state.reddit.fetch, state.reddit, path) ---@diagnostic disable-line: param-type-mismatch, assign-type-mismatch

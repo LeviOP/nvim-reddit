@@ -1,7 +1,6 @@
 local render = require("nvim-reddit.render")
 local state = require("nvim-reddit.state")
 local buffer = require("nvim-reddit.buffer")
-local html = require("nvim-reddit.html")
 local config = require("nvim-reddit.config")
 local util = require("nvim-reddit.util")
 local expand = require("nvim-reddit.expand")
@@ -196,7 +195,7 @@ local function gallery_nav(thing, reddit_buf, dir)
 
     ---@type Image|nil
     ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
-    local image = vim.async.await(3, image_api.from_url, html.decode(media.s.u), {
+    local image = vim.async.await(3, image_api.from_url, media.s.u, {
         buffer = reddit_buf.buffer,
         window = vim.api.nvim_get_current_win(),
         with_virtual_padding = true,

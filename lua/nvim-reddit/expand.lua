@@ -96,7 +96,7 @@ function M.link(thing, reddit_buf, thing_mark_end)
                             ---@type string[]
                             local player_args = {}
                             for i, arg in ipairs(config.player_options) do player_args[i] = arg end
-                            table.insert(player_args, html.decode(thing.data.secure_media.reddit_video.dash_url))
+                            table.insert(player_args, thing.data.secure_media.reddit_video.dash_url)
                             thing.player_job = vim.system(player_args, nil, config.player_onexit)
                         end
                     end
@@ -117,7 +117,7 @@ function M.link(thing, reddit_buf, thing_mark_end)
                     vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
                     ---@type Image|nil
                     ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
-                    local image = vim.async.await(3, image_api.from_url, html.decode(media.s.u), {
+                    local image = vim.async.await(3, image_api.from_url, media.s.u, {
                         buffer = reddit_buf.buffer,
                         window = vim.api.nvim_get_current_win(),
                         with_virtual_padding = true,
@@ -148,7 +148,7 @@ function M.link(thing, reddit_buf, thing_mark_end)
             local selftext_html = thing.data.selftext_html
             if selftext_html ~= vim.NIL then ---@cast selftext_html -vim.NIL -- why can't luals figure this out???
                 if thing.parsed == nil then
-                    local blocks = html.parse(html.decode(selftext_html))
+                    local blocks = html.parse(selftext_html)
                     thing.parsed = blocks
                 end
 

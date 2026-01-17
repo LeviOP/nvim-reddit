@@ -119,6 +119,7 @@ function M.parse_inner(element, source)
             if element_name == "a" then
                 extra = attrs.href
             end
+
             table.insert(stream, {
                 opening = true,
                 type = element_name,
