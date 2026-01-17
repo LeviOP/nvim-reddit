@@ -4,7 +4,8 @@ local ENTITY_MAP = {
     amp = "&",
     lt = "<",
     gt = ">",
-    quot = "\""
+    quot = "\"",
+    nbsp = " "
 }
 
 ---@param text string
@@ -13,9 +14,13 @@ function M.decode(text)
     text = text:gsub("&(%a+);", ENTITY_MAP)
 
     text = text:gsub("&#(%d+);", function(n)
-        --- @diagnostic disable-next-line: param-type-mismatch
-        return vim.fn.nr2char(tonumber(n))
+        return vim.fn.nr2char(tonumber(n, 10))
     end)
+
+    text = text:gsub("&#x([%da-fA-F]+);", function (n)
+        return vim.fn.nr2char(tonumber(n, 16))
+    end)
+
     return text
 end
 
