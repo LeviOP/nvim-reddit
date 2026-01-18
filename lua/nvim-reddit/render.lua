@@ -113,7 +113,9 @@ function M.richtext(richtext, width)
                     break
                 end
 
-                if word_end == seg_end then
+                local cur_bytes = current:len()
+
+                if word_end == seg_end and cur_bytes > 0 then
                     local carry_len = 1
                     for _, carry in ipairs(word_carry) do
                         carry_len = carry_len + carry.word:len()
@@ -125,11 +127,14 @@ function M.richtext(richtext, width)
 
                 local word_len = vim.fn.strdisplaywidth(word)
                 local cur_len = vim.fn.strdisplaywidth(current)
-                local cur_bytes = current:len()
 
                 if cur_len + word_len + (current ~= "" and 1 or 0) > width then
-                    lines[line + 1] = current
-                    line = line + 1
+                    if cur_bytes == 0 then
+                        lines[line] = word
+                    else
+                        lines[line + 1] = current
+                        line = line + 1
+                    end
                     local carry_ofs = 0
                     for _, carry in ipairs(word_carry) do
                         local carry_bytes = carry.word:len()
@@ -655,8 +660,8 @@ function M.lines(lines)
     for _, line in ipairs(lines) do
         local rendered_line = "";
         for _, seg in ipairs(line) do
-            local value, is_table = get_conditional(seg)
-            if value == nil then
+            local cond_value, is_table = get_conditional(seg)
+            if cond_value == nil then
                 goto continue
             end
             if #rendered_line ~= 0 then
@@ -665,7 +670,7 @@ function M.lines(lines)
             local offset = rendered_line:len()
             if is_table then ---@cast seg LineSegmentTable|LineSegmentMDHTML
                 if seg.padding then
-                    local cols = vim.fn.strdisplaywidth(value)
+                    local cols = vim.fn.strdisplaywidth(cond_value)
                     local padding = math.max(seg.padding - cols, 0)
                     rendered_line = rendered_line .. (" "):rep(padding)
                     offset = rendered_line:len()
@@ -676,18 +681,24 @@ function M.lines(lines)
                 end
                 if seg.marks ~= nil then
                     for _, mark in ipairs(seg.marks) do
-                        local hl_group = get_conditional(mark.hl_group)
-                        local url = get_conditional(mark.url)
-                        if hl_group or url then
+                        ---@type table<string, any>
+                        local details = {
+                            priority = 200,
+                        }
+                        local added = false
+                        for opt, value in pairs(mark) do
+                            local maybe_value = get_conditional(value)
+                            if maybe_value then
+                                details[opt] = maybe_value
+                                added = true
+                            end
+                        end
+                        if added then
                             table.insert(marks, {
-                                details = {
-                                    priority = 200,
-                                    hl_group = hl_group,
-                                    url = url
-                                },
+                                details = details,
                                 line = cur_line,
                                 start_col = offset,
-                                end_col = offset+value:len()
+                                end_col = offset+cond_value:len()
                             })
                         end
                     end
@@ -726,12 +737,12 @@ function M.lines(lines)
                     cur_line = cur_line + #rendered_lines
                     goto out
                 end
-                rendered_line = rendered_line .. value
+                rendered_line = rendered_line .. cond_value
                 if seg.post ~= nil then
                     rendered_line = rendered_line .. seg.post
                 end
             else
-                rendered_line = rendered_line .. value
+                rendered_line = rendered_line .. cond_value
             end
             ::continue::
         end

@@ -246,7 +246,7 @@ function M.parse(html)
 
     for i = 1, container:child_count() - 2 do
         local element = container:child(i) ---@cast element -?
-        local name = M.get_element_info(element, html)
+        local name, attrs = M.get_element_info(element, html)
 
         if name == "p" then
             local richtext = M.parse_inner(element, html)
