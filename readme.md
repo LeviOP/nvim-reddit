@@ -2,8 +2,6 @@ todo:
 - write a real readme
 - handle html correctly
   - handle inline spoiler
-  - handle sup better
-  - handle pre element
   - handle table element
   - fix blockquotes
     - newlines and other things (hr) inside mess things up
@@ -38,7 +36,6 @@ todo:
 - maybe show thumbnails? (probably not)
 - maybe do something different with gifs? (we are often provided an mp4, after all)
 - maybe show comment depth / parenting with background color change or "tree lines"
-- differentiate deleted links / comments
 - add "hovers" for various stuff
 - support mouse
 - maybe handle custom emojis

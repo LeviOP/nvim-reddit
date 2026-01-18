@@ -155,8 +155,12 @@ function M.link(thing, reddit_buf, thing_mark_end)
                 local width = util.get_window_text_width(0)
 
                 local lines, marks = render.blocks(thing.parsed, math.min(width, config.spacing.max_line_length) - margin)
-                for i, v in ipairs(lines) do
-                    lines[i] = (" "):rep(margin) .. v
+                for i, line in ipairs(lines) do
+                    if line == "" then
+                        lines[i] = ""
+                    else
+                        lines[i] = (" "):rep(margin) .. line
+                    end
                 end
 
                 local rendered_line_count = #lines
@@ -169,10 +173,18 @@ function M.link(thing, reddit_buf, thing_mark_end)
 
                 vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end + line_num, thing_mark_end + line_num, false, lines)
                 for _, mark in ipairs(marks) do
+                    if mark.details.virt_text_win_col then
+                        mark.details.virt_text_win_col = mark.details.virt_text_win_col + margin
+                        if mark.start_col == mark.end_col then
+                            goto draw
+                        end
+                    end
                     mark.details.priority = mark.details.priority or 100
                     mark.details.end_row = thing_mark_end + line_num + mark.line
                     mark.details.end_col = mark.end_col + margin
-                    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end + line_num + mark.line, mark.start_col + margin, mark.details)
+                    mark.start_col = mark.start_col + margin
+                    ::draw::
+                    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end + line_num + mark.line, mark.start_col, mark.details)
                 end
                 line_num = line_num + rendered_line_count
             end

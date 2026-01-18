@@ -51,7 +51,7 @@ function M.iter_element_child_nodes(element, source)
         local _, _, next_start = next_elm:start()
         local _, _, next_end = next_elm:end_()
 
-        if next_start > offset  then
+        if next_start > offset then
             local text = source:sub(offset + 1, next_start)
             offset = next_end
             return text
@@ -287,7 +287,6 @@ function M.parse(html)
                 opening = false,
                 type = "blockquote"
             })
-
             table.insert(blocks, {
                 type = "blockquote",
                 content = richtext
@@ -295,6 +294,18 @@ function M.parse(html)
         elseif name == "hr" then
             table.insert(blocks, {
                 type = "hr"
+            })
+        elseif name == "pre" then
+            -- assuming all pre elements have one code sub-element
+            local code = element:child(1) ---@cast code -?
+            local child_node_count = code:child_count()
+            local opening = code:child(0) ---@cast opening -?
+            local closing = code:child(child_node_count - 1) ---@cast closing -?
+
+            local text = M.decode(html:sub(select(3, opening:end_()) + 1, select(3, closing:start())))
+            table.insert(blocks, {
+                type = "pre",
+                content = text
             })
         else
             print("we don't support this element:", name)

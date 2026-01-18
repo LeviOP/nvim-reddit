@@ -527,12 +527,43 @@ function M.hr(_, width)
     return {("━"):rep(width)}, {}
 end
 
+---@param text string
+---@param width integer
+---@return string[], NvimReddit.Mark[]
+function M.pre(text, width)
+    ---@type string[]
+    local lines = {}
+    ---@type NvimReddit.Mark[]
+    local marks = {}
+    local i = 1
+    for line in text:gmatch("(.-)\n") do
+        local len = line:len()
+        lines[i] = line
+        table.insert(marks, {
+            details = {
+                hl_group = "RedditCode",
+                virt_text = {{(" "):rep(width - len), "RedditCode"}},
+                virt_text_pos = "eol",
+                virt_text_win_col = len,
+                priority = 50,
+                invalidate = true,
+            },
+            line = i - 1,
+            start_col = 0,
+            end_col = len,
+        })
+        i = i + 1
+    end
+    return lines, marks
+end
+
 ---@type table<string, fun(contents: any, width: integer): string[], NvimReddit.Mark[]>
 local TYPE_RENDERER_MAP = {
     richtext = M.richtext,
     list = M.list,
     blockquote = M.blockquote,
-    hr = M.hr
+    hr = M.hr,
+    pre = M.pre,
 }
 
 ---Render an array of blocks
@@ -548,7 +579,7 @@ function M.blocks(blocks, width)
     for _, block in ipairs(blocks) do
         local renderer = TYPE_RENDERER_MAP[block.type]
         if renderer == nil then
-            print("no renderer for type:", type)
+            print("no renderer for type:", block.type)
             goto continue
         end
 
@@ -671,13 +702,24 @@ function M.lines(lines)
                             table.insert(rendered_lines, rendered_line .. content_line)
                             -- out_lines[i] = rendered_line .. content_line
                         else
-                            table.insert(rendered_lines, (" "):rep(col) .. content_line)
-                            -- out_lines[i] = (" "):rep(col) .. content_line
+                            if content_line == "" then
+                                table.insert(rendered_lines, "")
+                            else
+                                table.insert(rendered_lines, (" "):rep(col) .. content_line)
+                                -- out_lines[i] = (" "):rep(col) .. content_line
+                            end
                         end
                     end
                     for _, mark in ipairs(content_marks) do
+                        if mark.details.virt_text_win_col then
+                            mark.details.virt_text_win_col = (mark.line == 0 and offset or col) + mark.details.virt_text_win_col
+                            if mark.start_col == mark.end_col then
+                                goto add
+                            end
+                        end
                         mark.end_col = (mark.line == 0 and offset or col) + mark.end_col
                         mark.start_col = (mark.line == 0 and offset or col) + mark.start_col
+                        ::add::
                         mark.line = mark.line + cur_line
                         table.insert(marks, mark)
                     end
