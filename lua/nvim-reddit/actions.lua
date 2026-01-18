@@ -285,7 +285,7 @@ local function load_more(more, reddit_buf)
             3,
             state.reddit.fetch,
             state.reddit,
-            "api/morechildren?api_type=json&children=" .. table.concat(more.data.children, ",") .. "&link_id=" .. more.link_id
+            "api/morechildren?api_type=json&children=" .. table.concat(more.data.children, ",") .. "&link_id=" .. more.link_id .. "&raw_json=1"
         ) ---@diagnostic disable-line: param-type-mismatch, assign-type-mismatch
         if err then
             vim.print(err)
