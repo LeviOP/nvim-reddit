@@ -14,7 +14,6 @@ todo:
   - add progress indicator to gallery
   - handle crossposts
     - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
-- handle "continue this thread" (more thing with id of "_"?)
 - handle rich:video and similar
 - support contest mode
 - maybe indicate when `more` children returned nothing

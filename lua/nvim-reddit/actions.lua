@@ -412,7 +412,13 @@ end
 ---@param reddit_buf NvimReddit.Buffer
 function M.enter(thing, reddit_buf)
     if thing.kind == "more" then
-        load_more(thing, reddit_buf)
+        if thing.data.count == 0 then
+            vim.async.run(function()
+                buffer.open(thing.parent.data.permalink:sub(2))
+            end):wait()
+        else
+            load_more(thing, reddit_buf)
+        end
     elseif thing.kind == "t3" then
         vim.ui.open(thing.data.url)
     else

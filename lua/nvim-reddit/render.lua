@@ -1083,21 +1083,35 @@ end
 function M.more(thing)
     local count = thing.data.count
     ---@type NvimReddit.Line[]
-    local lines = {{
-        {
-            (" "):rep(math.max(thing.padding - 1, 0)),
-            condition = thing.padding ~= 0,
-        },
-        {
-            "load more comments",
-            marks = {{ hl_group = "RedditMore" }}
-        },
-        {
-            count .. (count == 1 and " reply" or " replies"),
-            pre = "(",
-            post = ")",
-        },
-    }}
+    local lines
+    if count == 0 then
+        lines = {{
+            {
+                (" "):rep(math.max(thing.padding - 1, 0)),
+                condition = thing.padding ~= 0,
+            },
+            {
+                "continue this thread ──▶",
+                marks = {{ hl_group = "RedditAnchor", url = REDDIT_BASE .. thing.parent.data.permalink }},
+            },
+        }}
+    else
+        lines = {{
+            {
+                (" "):rep(math.max(thing.padding - 1, 0)),
+                condition = thing.padding ~= 0,
+            },
+            {
+                "load more comments",
+                marks = {{ hl_group = "RedditMore" }}
+            },
+            {
+                count .. (count == 1 and " reply" or " replies"),
+                pre = "(",
+                post = ")",
+            },
+        }}
+    end
     local rendered_lines, marks = M.lines(lines)
     ---@type NvimReddit.ThingMark[]
     local things = {{
