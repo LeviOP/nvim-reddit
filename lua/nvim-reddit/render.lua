@@ -64,10 +64,6 @@ local function inline_to_details(type, extra)
         details = {
             hl_group = "RedditSup"
         }
-    elseif type == "blockquote" then
-        details = {
-            hl_group = "RedditBlockquote"
-        }
     else
         print("we don't handle this element:", type)
         details = {}
@@ -164,7 +160,7 @@ function M.richtext(richtext, width)
                         end
                         carry_ofs = carry_ofs + carry_bytes
                     end
-                    for i, o in ipairs(open) do
+                    for _, o in ipairs(open) do
                         -- commands are inserted without knowledge of whether the next word
                         -- will actually be on the same line, or wrap. if it wrapped without
                         -- affecting any words, don't bother insert it. not sure if this test
@@ -178,8 +174,8 @@ function M.richtext(richtext, width)
                                 end_col = cur_bytes
                             })
                         end
-                        open[i].line = line
-                        open[i].col = 0
+                        o.line = line
+                        o.col = 0
                     end
                     current = word
                 else
@@ -220,7 +216,7 @@ function M.richtext(richtext, width)
         else
             local word_carry_len = #word_carry
             if word_carry_len ~= 0 then
-                -- thoretically, a br will never have whitespace before it, meaning it will always occur with a carry
+                -- theoretically, a br will never have whitespace before it, meaning it will always occur with a carry
                 if seg.type == "br" then
                     local carry_words = ""
                     for _, carry in ipairs(word_carry) do
@@ -262,7 +258,7 @@ function M.richtext(richtext, width)
                             end
                             carry_ofs = carry_ofs + carry_bytes
                         end
-                        for i, o in ipairs(open) do
+                        for _, o in ipairs(open) do
                             if o.col < cur_bytes then
                                 local details = inline_to_details(o.type, o.extra)
                                 table.insert(marks, {
@@ -272,8 +268,8 @@ function M.richtext(richtext, width)
                                     end_col = cur_bytes
                                 })
                             end
-                            open[i].line = line
-                            open[i].col = 0
+                            o.line = line
+                            o.col = 0
                         end
                         current = carry_words
                     else
@@ -309,9 +305,24 @@ function M.richtext(richtext, width)
                             carry_ofs = carry_ofs + carry_bytes
                         end
                     end
+                    -- recalculate because current changed if we're here
+                    cur_bytes = current:len()
                     word_carry = {}
                     lines[line + 1] = current
                     line = line + 1
+                    for _, o in ipairs(open) do
+                        if o.col < cur_bytes then
+                            local details = inline_to_details(o.type, o.extra)
+                            table.insert(marks, {
+                                details = details,
+                                line = o.line,
+                                start_col = o.col,
+                                end_col = cur_bytes
+                            })
+                        end
+                        o.line = line
+                        o.col = 0
+                    end
                     current = ""
                 else
                     table.insert(word_carry[word_carry_len].commands, seg)
@@ -385,7 +396,7 @@ function M.richtext(richtext, width)
                 end
                 carry_ofs = carry_ofs + carry_bytes
             end
-            for i, o in ipairs(open) do
+            for _, o in ipairs(open) do
                 if o.col < cur_bytes then
                     local details = inline_to_details(o.type, o.extra)
                     table.insert(marks, {
@@ -395,8 +406,8 @@ function M.richtext(richtext, width)
                         end_col = cur_bytes
                     })
                 end
-                open[i].line = line
-                open[i].col = 0
+                o.line = line
+                o.col = 0
             end
             current = carry_words
         else
@@ -497,20 +508,23 @@ function M.list(list, width)
     return lines, marks
 end
 
----@param richtext NvimReddit.RichText
+---@param blocks NvimReddit.Block[]
 ---@param width integer
 ---@return string[], NvimReddit.Mark[]
-function M.blockquote(richtext, width)
+function M.blockquote(blocks, width)
     -- FIXME: make this configurable and only calculated once
     local pad = "┃ "
     local pad_bytes = pad:len()
     local pad_width = vim.fn.strdisplaywidth(pad)
-    local lines, marks = M.richtext(richtext, width - pad_width)
+
+    local lines, marks = M.blocks(blocks, width - pad_width)
+
     for _, mark in ipairs(marks) do
         mark.start_col = mark.start_col + pad_bytes
         mark.end_col = mark.end_col + pad_bytes
     end
     for i, line in ipairs(lines) do
+        local length = line:len()
         lines[i] = pad .. line
         table.insert(marks, {
             details = {
@@ -519,7 +533,16 @@ function M.blockquote(richtext, width)
             },
             line = i - 1,
             start_col = 0,
-            end_col = pad_bytes
+            end_col = pad_bytes,
+        })
+        table.insert(marks, {
+            details = {
+                priority = 200,
+                hl_group = "RedditBlockquote"
+            },
+            line = i - 1,
+            start_col = pad_bytes,
+            end_col = length + pad_bytes,
         })
     end
     return lines, marks
@@ -705,7 +728,7 @@ function M.lines(lines)
                 end
                 if seg.mdhtml == true then ---@cast seg LineSegmentMDHTML
                     local width = util.get_window_text_width(0)
-                    local blocks = html.parse(seg[1])
+                    local blocks = html.parse_md(seg[1])
                     local col = vim.fn.strdisplaywidth(rendered_line)
                     local content_lines, content_marks = M.blocks(blocks, math.min(width - col, config.spacing.max_line_length))
                     for i, content_line in ipairs(content_lines) do
@@ -902,7 +925,7 @@ function M.comment(thing, render_children)
             },
             {
                 comment.score .. " point" .. (comment.score == 1 and "" or "s"),
-                marks = {{ hl_group = "Bold" }},
+                marks = {{ hl_group = "RedditPoints" }},
                 condition = not comment.score_hidden,
             },
             {

@@ -148,7 +148,7 @@ function M.link(thing, reddit_buf, thing_mark_end)
             local selftext_html = thing.data.selftext_html
             if selftext_html ~= vim.NIL then ---@cast selftext_html -vim.NIL -- why can't luals figure this out???
                 if thing.parsed == nil then
-                    local blocks = html.parse(selftext_html)
+                    local blocks = html.parse_md(selftext_html)
                     thing.parsed = blocks
                 end
 

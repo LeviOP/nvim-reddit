@@ -226,10 +226,10 @@ end
 -- assuming that reddit has formed it well. i'll make it safe if there
 -- are every any problems :)
 
----Parse an html string into a series of markdown "blocks"
+---Parse a top-level markdown-generated html string into a series of "blocks"
 ---@param html string
 ---@return NvimReddit.Block[]
-function M.parse(html)
+function M.parse_md(html)
     local parser = vim.treesitter.get_string_parser(html, "html")
     local tree = parser:parse(true)[1]
     local root = tree:root()
@@ -241,21 +241,29 @@ function M.parse(html)
         end
     end
 
+    local blocks = M.parse_container(container, html)
+
+    return blocks
+end
+
+---@param container TSNode
+---@return NvimReddit.Block[]
+function M.parse_container(container, source)
     ---@type NvimReddit.Block[]
     local blocks = {}
 
     for i = 1, container:child_count() - 2 do
         local element = container:child(i) ---@cast element -?
-        local name, attrs = M.get_element_info(element, html)
+        local name, attrs = M.get_element_info(element, source)
 
         if name == "p" then
-            local richtext = M.parse_inner(element, html)
+            local richtext = M.parse_inner(element, source)
             table.insert(blocks, {
                 type = "richtext",
                 content = richtext
             })
         elseif name == "h1" or name == "h2" or name == "h3" or name == "h4" or name == "h5" or name == "h6" then
-            local richtext = M.parse_inner(element, html)
+            local richtext = M.parse_inner(element, source)
             table.insert(richtext, 1, {
                 opening = true,
                 type = name
@@ -270,26 +278,27 @@ function M.parse(html)
                 content = richtext
             })
         elseif name == "ol" or name == "ul" then
-            local list = M.parse_list(element, html)
+            local list = M.parse_list(element, source)
             table.insert(blocks, {
                 type = "list",
                 content = list
             })
         elseif name == "blockquote" then
-            -- assuming that blockquote elements always have a single child paragraph
-            local paragraph = element:child(1) ---@cast paragraph -?
-            local richtext = M.parse_inner(paragraph, html)
-            table.insert(richtext, 1, {
-                opening = true,
-                type = "blockquote"
-            })
-            table.insert(richtext, {
-                opening = false,
-                type = "blockquote"
-            })
+            local inner_blocks = M.parse_container(element, source)
+            -- -- assuming that blockquote elements always have a single child paragraph
+            -- local paragraph = element:child(1) ---@cast paragraph -?
+            -- local richtext = M.parse_inner(paragraph, source)
+            -- table.insert(richtext, 1, {
+            --     opening = true,
+            --     type = "blockquote"
+            -- })
+            -- table.insert(richtext, {
+            --     opening = false,
+            --     type = "blockquote"
+            -- })
             table.insert(blocks, {
                 type = "blockquote",
-                content = richtext
+                content = inner_blocks
             })
         elseif name == "hr" then
             table.insert(blocks, {
@@ -302,7 +311,7 @@ function M.parse(html)
             local opening = code:child(0) ---@cast opening -?
             local closing = code:child(child_node_count - 1) ---@cast closing -?
 
-            local text = M.decode(html:sub(select(3, opening:end_()) + 1, select(3, closing:start())))
+            local text = M.decode(source:sub(select(3, opening:end_()) + 1, select(3, closing:start())))
             table.insert(blocks, {
                 type = "pre",
                 content = text

@@ -3,8 +3,6 @@ todo:
 - handle html correctly
   - handle inline spoiler
   - handle table element
-  - fix blockquotes
-    - newlines and other things (hr) inside mess things up
 - better configuration
   - configurable highlights
   - configurable margins
@@ -17,6 +15,7 @@ todo:
 - handle rich:video and similar
 - support contest mode
 - maybe indicate when `more` children returned nothing
+- maybe make foldtext children the number of decendents instead of direct children (like offical reddit ui)
 - only show link with sticked text on subreddit
 - figure out why virtual padding sometimes isn't displayed until a redraw (probably image.nvim's fault)
 - handle buffer being open in multiple windows
