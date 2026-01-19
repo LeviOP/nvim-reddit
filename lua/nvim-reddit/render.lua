@@ -566,13 +566,15 @@ function M.pre(text, width)
     local i = 1
     for line in text:gmatch("(.-)\n") do
         local len = line:len()
+        -- virt_text_win_col doesn't use byte indexing because it's not actually positioned as part of the extmark
+        local cols = vim.fn.strdisplaywidth(line)
         lines[i] = line
         table.insert(marks, {
             details = {
                 hl_group = "RedditCode",
-                virt_text = {{(" "):rep(width - len), "RedditCode"}},
+                virt_text = {{(" "):rep(width - cols), "RedditCode"}},
                 virt_text_pos = "eol",
-                virt_text_win_col = len,
+                virt_text_win_col = cols,
                 priority = 50,
                 invalidate = true,
             },
@@ -746,7 +748,8 @@ function M.lines(lines)
                     end
                     for _, mark in ipairs(content_marks) do
                         if mark.details.virt_text_win_col then
-                            mark.details.virt_text_win_col = (mark.line == 0 and offset or col) + mark.details.virt_text_win_col
+                            -- virt_text_win_col doesn't use byte indexing because it's not actually positioned as part of the extmark
+                            mark.details.virt_text_win_col = col + mark.details.virt_text_win_col
                             if mark.start_col == mark.end_col then
                                 goto add
                             end
