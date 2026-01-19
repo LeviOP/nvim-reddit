@@ -211,6 +211,23 @@ function M.open(path)
             end, { buffer = buffer })
         end
 
+        if state.mode == "post" then
+            vim.keymap.set("n", "j", function()
+                state.jump(buffer, -1)
+            end, { buffer = buffer })
+            vim.keymap.set("n", "k", function()
+                state.jump(buffer, 1)
+            end, { buffer = buffer })
+        end
+
+        vim.keymap.set("n", "i", function()
+            state.set_mode("post")
+        end, { buffer = buffer })
+
+        vim.keymap.set("n", "<Esc>", function()
+            state.set_mode("normal")
+        end, { buffer = buffer })
+
         --- FIXME: add "dev" config option or something
         vim.keymap.set("n", "gj", function()
             local formatted = vim.fn.systemlist("jq .", response.rawdata)
