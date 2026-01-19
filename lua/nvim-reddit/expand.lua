@@ -62,11 +62,30 @@ function M.link(thing, reddit_buf, thing_mark_end)
             if hint then
                 if hint == "image" then
                     if not reddit_buf.images[thing.data.id] then
+                        local url
+                        if thing.data.preview then
+                            if #thing.data.preview.images ~= 1 then
+                                print("More thanone preview.images?", #thing.data.preview.images)
+                            end
+                            local image = thing.data.preview.images[1]
+                            ---@type NvimReddit.PreviewImageSource
+                            local best = { url = "", width = 0, height = 0 }
+                            for _, res in ipairs(image.resolutions) do
+                                if res.height > best.height and (best.height == 0 or res.height <= 480) then
+                                    best = res
+                                end
+                            end
+                            url = best.url
+                        end
+                        if not url then
+                            url = thing.data.url_overridden_by_dest
+                        end
+
                         -- disable while async
                         vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
                         ---@type Image|nil
                         ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
-                        local image = vim.async.await(3, image_api.from_url, thing.data.url_overridden_by_dest, {
+                        local image = vim.async.await(3, image_api.from_url, url, {
                             buffer = reddit_buf.buffer,
                             window = vim.api.nvim_get_current_win(),
                             with_virtual_padding = true,
@@ -113,11 +132,32 @@ function M.link(thing, reddit_buf, thing_mark_end)
                         return
                     end
 
+                    local url
+                    ---@type NvimReddit.MediaPreview
+                    local best = { u = "", x = 0, y = 0 }
+                    for _, res in ipairs(media.p) do
+                        if res.y > best.y and (best.y == 0 or res.y <= 480) then
+                            best = res
+                        end
+                    end
+                    if best.y >= 400 then
+                        url = best.u
+                    else
+                        if media.e == "Image" then
+                            url = media.s.u
+                        elseif media.e == "AnimatedImage" then
+                            url = media.s.gif
+                        else
+                            print("Unhandled gallery type:", media.e)
+                            return
+                        end
+                    end
+
                     -- disable while async
                     vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
                     ---@type Image|nil
                     ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
-                    local image = vim.async.await(3, image_api.from_url, media.s.u, {
+                    local image = vim.async.await(3, image_api.from_url, url, {
                         buffer = reddit_buf.buffer,
                         window = vim.api.nvim_get_current_win(),
                         with_virtual_padding = true,

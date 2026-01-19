@@ -198,13 +198,24 @@ local function gallery_nav(thing, reddit_buf, dir)
     end
 
     local url
-    if media.e == "Image" then
-        url = media.s.u
-    elseif media.e == "AnimatedImage" then
-        url = media.s.gif
+    ---@type NvimReddit.MediaPreview
+    local best = { u = "", x = 0, y = 0 }
+    for _, res in ipairs(media.p) do
+        if res.y > best.y and res.y <= 480 then
+            best = res
+        end
+    end
+    if best.y >= 400 then
+        url = best.u
     else
-        print("Unhandled gallery type:", media.e)
-        return
+        if media.e == "Image" then
+            url = media.s.u
+        elseif media.e == "AnimatedImage" then
+            url = media.s.gif
+        else
+            print("Unhandled gallery type:", media.e)
+            return
+        end
     end
 
     ---@type Image|nil

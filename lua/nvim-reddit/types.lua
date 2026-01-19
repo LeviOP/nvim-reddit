@@ -233,10 +233,15 @@
 ---@field e string
 ---@field m string
 ---@field ext? string
----@field p table[]
+---@field p NvimReddit.MediaPreview[]
 ---@field s NvimReddit.MediaSource
 ---@field t? string
 ---@field id string
+
+---@class (exact) NvimReddit.MediaPreview
+---@field u string
+---@field x integer
+---@field y integer
 
 ---@class (exact) NvimReddit.MediaSource
 ---@field y integer
