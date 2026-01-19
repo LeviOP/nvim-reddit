@@ -269,14 +269,6 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                     end
                 end
 
-                local rendered_line_count = #lines
-
-                -- FIXME: repeated table.insert is needlessly slow (and in other places)
-                local buffer_foldlevels = reddit_buf.foldlevels
-                for _ = thing_mark_end, thing_mark_end + line_num + rendered_line_count - 1 do
-                    table.insert(buffer_foldlevels, thing_mark_end + 1, 0)
-                end
-
                 vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end + line_num, thing_mark_end + line_num, false, lines)
                 for _, mark in ipairs(marks) do
                     if mark.details.virt_text_win_col then
@@ -292,7 +284,13 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                     ::draw::
                     vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end + line_num + mark.line, mark.start_col, mark.details)
                 end
-                line_num = line_num + rendered_line_count
+                line_num = line_num + #lines
+            end
+
+            -- FIXME: repeated table.insert is needlessly slow (and in other places)
+            local buffer_foldlevels = reddit_buf.foldlevels
+            for _ = thing_mark_end, thing_mark_end + line_num - 1 do
+                table.insert(buffer_foldlevels, thing_mark_end + 1, 0)
             end
 
             thing.expando_mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end, 0, {
