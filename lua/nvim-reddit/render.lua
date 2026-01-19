@@ -818,8 +818,8 @@ function M.link(thing)
                 link.title:gsub("%s+", " "),
                 marks = {
                     { url = link.url },
-                    { hl_group = { "RedditStickied", condition = link.stickied },
-                    { hl_group = { "RedditPinned", condition = link.pinned },
+                    { hl_group = { "RedditStickied", condition = link.stickied } },
+                    { hl_group = { "RedditPinned", condition = link.stickied } },
                 },
             },
             {
