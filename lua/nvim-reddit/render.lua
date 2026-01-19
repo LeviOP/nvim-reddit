@@ -1026,6 +1026,7 @@ function M.comment(thing, render_children)
                         thing.media = {
                             media = media,
                             line = mark.line,
+                            byte = mark.start_col,
                         }
                         -- This is a super duper hack. Doing it in any other way would be way more
                         -- annoying, though. Might cause issues down the line :)
@@ -1045,6 +1046,7 @@ function M.comment(thing, render_children)
                             thing.media = {
                                 media = media,
                                 line = mark.line,
+                                byte = mark.start_col,
                             }
                             goto found
                         end
@@ -1055,7 +1057,8 @@ function M.comment(thing, render_children)
                         if url and url == media.s.gif then
                             thing.media = {
                                 media = media,
-                                line = mark.line
+                                line = mark.line,
+                                byte = mark.start_col,
                             }
                             local line = rendered_lines[mark.line + 1]
                             rendered_lines[mark.line + 1] = line:sub(1, mark.start_col) .. "<gif>"
@@ -1185,6 +1188,7 @@ end
 ---@class (exact) NvimReddit.InlineMedia
 ---@field media NvimReddit.Media
 ---@field line integer
+---@field byte integer
 
 ---@class (exact) NvimReddit.ThingMark
 ---@field thing NvimReddit.Selectable

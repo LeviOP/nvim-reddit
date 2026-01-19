@@ -21,6 +21,7 @@ todo:
 - maybe make foldtext children the number of decendents instead of direct children (like offical reddit ui)
 - only show link with sticked text on subreddit
 - figure out why virtual padding sometimes isn't displayed until a redraw (probably image.nvim's fault)
+- figure out why inline images on newline render at the wrong position (even though mark is in the right spot) (image.nvim bug)
 - handle buffer being open in multiple windows
 - use style linter
 - handle score digit count being higher than score margin
@@ -37,7 +38,6 @@ todo:
 - indicate whether link is expandable
 - maybe render directly instead of rendering text and shifting it around (luajit is very fast :)
 - maybe show thumbnails? (probably not)
-- maybe do something different with gifs? (we are often provided an mp4, after all)
 - maybe show comment depth / parenting with background color change or "tree lines"
 - add "hovers" for various stuff
 - support mouse

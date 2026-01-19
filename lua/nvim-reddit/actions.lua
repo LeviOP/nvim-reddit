@@ -128,9 +128,8 @@ function M.expand(thing, reddit_buf)
         local thing_mark_start = vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, {})[1]
         expand.comment(thing, reddit_buf, thing_mark_start)
     elseif thing.kind == "t3" then
-        local thing_mark_end = vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true })[3].end_row
-        ---@cast thing_mark_end -? -- we always set it with an end_row so
-        expand.link(thing, reddit_buf, thing_mark_end)
+        local thing_mark_start, _, thing_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true }))
+        expand.link(thing, reddit_buf, thing_mark_start, thing_details.end_row)
     else
         print("You cannot expand this thing")
     end

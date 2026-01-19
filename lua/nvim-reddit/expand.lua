@@ -66,9 +66,12 @@ function M.comment(thing, reddit_buf, thing_mark_start)
                 reddit_buf.images[thing.data.id] = image
             end
 
+            if config.set_topline_on_expand then
+                vim.fn.winrestview({ topline = thing_mark_start + 1 })
+            end
             reddit_buf.images[thing.data.id]:render({
                 y = thing_mark_start + thing.media.line,
-                x = thing.padding + 5
+                x = thing.media.byte
             })
             thing.open = true
         end):wait()
@@ -85,13 +88,18 @@ end
 
 ---@param thing NvimReddit.Link
 ---@param reddit_buf NvimReddit.Buffer
+---@param thing_mark_start integer
 ---@param thing_mark_end integer
-function M.link(thing, reddit_buf, thing_mark_end)
+function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
     local line_num = 0
     local hint = thing.data.post_hint
     vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
     if not thing.open then
         vim.async.run(function()
+            if config.set_topline_on_expand then
+                vim.fn.winrestview({ topline = thing_mark_start + 1 })
+            end
+
             local margin = config.spacing.score_margin + 1
             if hint then
                 if hint == "image" then

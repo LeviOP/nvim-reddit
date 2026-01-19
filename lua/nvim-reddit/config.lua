@@ -16,6 +16,7 @@ local util = require("nvim-reddit.util")
 ---@field gif_player_options string[]
 ---@field player_onexit fun(out: vim.SystemCompleted)?
 ---@field icons boolean
+---@field set_topline_on_expand boolean
 local M = {}
 
 ---@alias NvimReddit.Keymap { [1]: string, [2]: string, [3]: fun(thing: NvimReddit.Selectable, reddit_buf: NvimReddit.Buffer) }
@@ -151,6 +152,7 @@ function M.defaults()
             end
         end,
         icons = true,
+        set_topline_on_expand = true,
     }
     return defaults
 end
