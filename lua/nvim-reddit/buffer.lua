@@ -90,6 +90,13 @@ function M.open(path)
 
     state.buffers[buffer] = reddit_buf
 
+    vim.api.nvim_create_autocmd({"BufDelete"}, {
+        buffer = buffer,
+        callback = function()
+            state.buffers[buffer] = nil
+        end,
+    })
+
     if state.reddit == nil then
         local reddit_api_path = vim.fs.joinpath(config.data_dir, "api.json")
         local reddit, err = config.setup_reddit(reddit_api_path, config.platform_resolver())
