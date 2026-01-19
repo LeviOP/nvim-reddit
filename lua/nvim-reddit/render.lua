@@ -841,7 +841,7 @@ function M.link(thing)
             {
                 link.author,
                 marks = {
-                    { hl_group = "RedditAnchor", url = REDDIT_BASE .. "user/" .. link.author },
+                    { hl_group = { "RedditAnchor", condition = link.author ~= "[deleted]" }, url = { REDDIT_BASE .. "user/" .. link.author, condition = link.author ~= "[deleted]" } },
                     { hl_group = { "RedditModerator", condition = link.distinguished == "moderator" } },
                     { hl_group = { "RedditAdmin", condition = link.distinguished == "admin" } },
                 },
@@ -927,7 +927,7 @@ function M.comment(thing, render_children)
             {
                 comment.author,
                 marks = {
-                    { hl_group = { "RedditAnchor", condition = comment.author_fullname ~= nil }, url = { REDDIT_BASE .. "user/" .. comment.author, condition = comment.author_fullname ~= nil } },
+                    { hl_group = { "RedditAnchor", condition = comment.author ~= "[deleted]" }, url = { REDDIT_BASE .. "user/" .. comment.author, condition = comment.author ~= "[deleted]" } },
                     { hl_group = { "RedditSecondary", condition = not comment.author_fullname } },
                     { hl_group = { "RedditOP", condition = comment.is_submitter } },
                     { hl_group = { "RedditModerator", condition = comment.distinguished == "moderator" } },
@@ -1211,6 +1211,7 @@ function M.listing(listing, endpoint)
         elseif thing.kind == "t3" then
             ---@type string
             local url_domain = thing.data.url:match("^%w+://([^/:?#]+)")
+            url_domain = url_domain:gsub("^www%.", "")
             if url_domain ~= thing.data.domain then
                 -- this might not be a good assumption to make, but we'll see i guess
                 thing.domain_url = thing.data.subreddit_name_prefixed

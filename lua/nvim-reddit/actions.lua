@@ -159,6 +159,10 @@ function M.open_user(thing)
     if thing.kind == "more" then
         return
     end
+    if thing.data.author == "[deleted]" then
+        print("Cannot go to deleted user's profile")
+        return
+    end
     vim.async.run(function()
         buffer.open("user/" .. thing.data.author)
     end):wait()
