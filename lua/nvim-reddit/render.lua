@@ -1217,7 +1217,7 @@ function M.listing(listing, endpoint)
             else
                 thing.domain_url = "domain/" .. thing.data.domain
             end
-            thing.show_subreddit = endpoint.subreddit ~= thing.data.subreddit
+            thing.show_subreddit = endpoint.subreddit ~= thing.data.subreddit:lower()
             thing_lines, thing_style_marks, thing_marks, thing_foldlevels = M.link(thing)
         elseif thing.kind == "more" then
             thing.padding = 0

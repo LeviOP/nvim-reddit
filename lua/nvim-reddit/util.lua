@@ -145,6 +145,9 @@ function M.parse_reddit_endpoint(path)
         path = "/" .. path
     end
 
+    -- remove query parameters
+    path = path:gsub("%?.*$", "")
+
     ---@type string|nil
     local subreddit = nil
     ---@type string|nil
@@ -156,11 +159,11 @@ function M.parse_reddit_endpoint(path)
     local u = path:match("^/user/([^/]+)") or path:match("^/u/([^/]+)")
 
     if r then
-        subreddit = r
+        subreddit = r:lower()
         path = path:gsub("^/r/[^/]+", "")
     elseif u then
-        subreddit = "u_" .. u
-        user = u
+        subreddit = "u_" .. u:lower()
+        user = u:lower()
         path = path:gsub("^/u/[^/]+", ""):gsub("^/user/[^/]+", "")
     end
 
