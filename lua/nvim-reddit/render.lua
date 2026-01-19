@@ -762,6 +762,19 @@ function M.lines(lines)
                         mark.line = mark.line + cur_line
                         table.insert(marks, mark)
                     end
+                    if seg.hl_group then
+                        for i, content_line in ipairs(content_lines) do
+                            table.insert(marks, {
+                                details = {
+                                    hl_group = seg.hl_group,
+                                    priority = 300,
+                                },
+                                line = i + cur_line - 1,
+                                start_col = (i == 1 and offset or col),
+                                end_col = (i == 1 and offset or col) + content_line:len()
+                            })
+                        end
+                    end
                     cur_line = cur_line + #rendered_lines
                     goto out
                 end
@@ -786,6 +799,7 @@ end
 ---@class LineSegmentMDHTML
 ---@field [1] string
 ---@field mdhtml true
+---@field hl_group string?
 
 ---@class LineSegmentTable
 ---@field [1] string|number|fun(): string
@@ -983,7 +997,7 @@ function M.comment(thing, render_children)
                 "󰜮",
                 marks = {{ hl_group = { "RedditDownvoted", condition = comment.likes == false } }}
             },
-            { comment.body_html, mdhtml = true },
+            { comment.body_html, mdhtml = true, hl_group = comment.removal_reason == "legal" and "RedditAdminTakedown" or nil },
         }
     }
 
@@ -992,7 +1006,13 @@ function M.comment(thing, render_children)
         local line = {
             { comment.link_title, marks = {{ url = comment.link_url }} },
             "by",
-            { comment.link_author, marks = {{ hl_group = "RedditAnchor", url = REDDIT_BASE .. "user/" .. comment.link_author }} },
+            {
+                comment.link_author,
+                marks = {{
+                    hl_group = { "RedditAnchor", condition = comment.link_author ~= "[deleted]" },
+                    url = { REDDIT_BASE .. "user/" .. comment.link_author, condition = comment.link_author ~= "[deleted]" },
+                }},
+            },
             "in",
             { comment.subreddit, marks = {{ hl_group = "RedditAnchor", url = REDDIT_BASE .. comment.subreddit_name_prefixed }} },
         }

@@ -112,13 +112,17 @@ end
 
 ---@param thing NvimReddit.Selectable
 function M.open_comments(thing)
-    if thing.kind ~= "t3" then
+    if thing.kind == "t3" then
+        vim.async.run(function()
+            buffer.open(thing.data.permalink:sub(2))
+        end):wait()
+    elseif thing.kind == "t1" and thing.data.link_permalink then
+        vim.async.run(function()
+            buffer.open(thing.data.link_permalink:gsub("^https://www.reddit.com/", ""))
+        end):wait()
+    else
         print("not a link")
-        return
     end
-    vim.async.run(function()
-        buffer.open(thing.data.permalink:sub(2))
-    end):wait()
 end
 
 ---@param thing NvimReddit.Selectable

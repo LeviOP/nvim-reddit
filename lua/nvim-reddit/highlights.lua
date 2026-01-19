@@ -8,6 +8,10 @@ vim.api.nvim_set_hl(0, "RedditPinned", {
     bold = true,
 })
 
+vim.api.nvim_set_hl(0, "RedditAdminTakedown", {
+    link = "PmenuSbar"
+})
+
 vim.api.nvim_set_hl(0, "RedditUpvoted", {
     foreground = "#D93900",
 })

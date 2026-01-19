@@ -287,6 +287,7 @@
 ---@field author_flair_text string | null
 ---@field subreddit string
 ---@field link_author? string
+---@field link_permalink? string
 ---@field permalink string
 ---@field author_premium boolean
 ---@field subreddit_type string
