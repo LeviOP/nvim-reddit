@@ -128,3 +128,8 @@ vim.api.nvim_set_hl(0, "RedditNavButton", {
     foreground = "#dddddd",
     background = "#777777",
 })
+
+vim.api.nvim_set_hl(0, "RedditModeStatus", {
+    foreground = "#FFFFFF",
+    background = "#FF4500",
+})

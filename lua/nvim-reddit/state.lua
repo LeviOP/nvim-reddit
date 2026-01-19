@@ -4,7 +4,6 @@
 ---@field reddit NvimReddit.RedditClient|nil
 ---@field ns integer
 ---@field tns integer
----@field config NvimReddit.Config
 ---@field buffers table<integer, NvimReddit.Buffer>
 ---@field mode NvimReddit.Mode
 local M = {
@@ -42,6 +41,9 @@ function M.jump(buffer, dir)
     end
 end
 
+local config = require("nvim-reddit.config")
+local lualine
+
 ---@param mode NvimReddit.Mode
 function M.set_mode(mode)
     if mode == M.mode then
@@ -65,6 +67,29 @@ function M.set_mode(mode)
             M.mode = "normal"
         end
     end
+
+    if config.refresh_lualine then
+        if not lualine then
+            lualine = require("lualine")
+        end
+        lualine.refresh()
+    end
+end
+
+function M.lualine()
+    return {
+        function()
+            return M.mode == "post" and "POST" or ""
+        end,
+        cond = function()
+            return vim.bo.filetype == "reddit"
+        end,
+        separator = {
+            left = "",
+            right = ""
+        },
+        color = "RedditModeStatus",
+    }
 end
 
 return M

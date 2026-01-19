@@ -1,5 +1,3 @@
-local util = require("nvim-reddit.util")
-
 ---@class NvimReddit.SpacingConfig
 ---@field score_margin integer
 ---@field max_line_length integer
@@ -16,6 +14,7 @@ local util = require("nvim-reddit.util")
 ---@field gif_player_options string[]
 ---@field player_onexit fun(out: vim.SystemCompleted)?
 ---@field icons boolean
+---@field refresh_lualine boolean
 ---@field set_topline_on_expand boolean
 local M = {}
 
@@ -34,6 +33,8 @@ function M.setup_reddit_config(reddit_api_path)
         client_secret = client_secret,
         redirect_uri = redirect_uri
     })
+    local util = require("nvim-reddit.util")
+
     util.ensure_dir(M.data_dir)
     local f, oerr = io.open(reddit_api_path, "w")
     if oerr ~= nil or not f then
@@ -51,6 +52,7 @@ end
 ---@param platform string
 ---@return NvimReddit.RedditClient|nil, string?
 function M.setup_reddit(reddit_api_path, platform)
+    local util = require("nvim-reddit.util")
     local file, err, err_code = util.read_file(reddit_api_path)
     local client_id, client_secret, redirect_uri
     if err or not file then
@@ -152,6 +154,7 @@ function M.defaults()
             end
         end,
         icons = true,
+        refresh_lualine = false,
         set_topline_on_expand = true,
     }
     return defaults
