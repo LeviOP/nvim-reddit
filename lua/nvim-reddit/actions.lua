@@ -197,9 +197,19 @@ local function gallery_nav(thing, reddit_buf, dir)
         return
     end
 
+    local url
+    if media.e == "Image" then
+        url = media.s.u
+    elseif media.e == "AnimatedImage" then
+        url = media.s.gif
+    else
+        print("Unhandled gallery type:", media.e)
+        return
+    end
+
     ---@type Image|nil
     ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
-    local image = vim.async.await(3, image_api.from_url, media.s.u, {
+    local image = vim.async.await(3, image_api.from_url, url, {
         buffer = reddit_buf.buffer,
         window = vim.api.nvim_get_current_win(),
         with_virtual_padding = true,
