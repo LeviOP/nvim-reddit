@@ -829,7 +829,7 @@ function M.link(thing)
                 link.domain,
                 pre = "(",
                 post = ")",
-                marks = {{ hl_group = "RedditAnchor", url = REDDIT_BASE .. thing.domain_url }},
+                marks = {{ hl_group = "RedditAnchor", url = { REDDIT_BASE .. thing.domain_url, condition = thing.domain_url ~= nil } }},
             },
         },
         {
@@ -1212,14 +1212,19 @@ function M.listing(listing, endpoint)
             thing.padding = 0
             thing_lines, thing_style_marks, thing_marks, thing_foldlevels = M.comment(thing, true)
         elseif thing.kind == "t3" then
-            ---@type string
-            local url_domain = thing.data.url:match("^%w+://([^/:?#]+)")
-            url_domain = url_domain:gsub("^www%.", "")
-            if url_domain ~= thing.data.domain then
-                -- this might not be a good assumption to make, but we'll see i guess
-                thing.domain_url = thing.data.subreddit_name_prefixed
+            -- crossposts don't have a domain
+            if thing.data.domain == "" then
+                thing.domain_url = nil
             else
-                thing.domain_url = "domain/" .. thing.data.domain
+                ---@type string
+                local url_domain = thing.data.url:match("^%w+://([^/:?#]+)")
+                -- url_domain = url_domain:gsub("^www%.", "")
+                if url_domain ~= thing.data.domain then
+                    -- this might not be a good assumption to make, but we'll see i guess
+                    thing.domain_url = thing.data.subreddit_name_prefixed
+                else
+                    thing.domain_url = "domain/" .. thing.data.domain
+                end
             end
             thing.show_subreddit = endpoint.subreddit ~= thing.data.subreddit:lower()
             thing_lines, thing_style_marks, thing_marks, thing_foldlevels = M.link(thing)
