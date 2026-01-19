@@ -119,3 +119,8 @@ vim.api.nvim_set_hl(0, "RedditBlockquotePad", {
 vim.api.nvim_set_hl(0, "RedditMore", {
     bold = true
 })
+
+vim.api.nvim_set_hl(0, "RedditNavButton", {
+    foreground = "#dddddd",
+    background = "#777777",
+})

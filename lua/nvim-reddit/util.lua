@@ -130,6 +130,7 @@ end
 ---@field type NvimReddit.EndpointType
 ---@field subreddit string|nil
 ---@field user string|nil
+---@field params table<string, string>
 
 ---@param path string
 ---@return NvimReddit.ParsedEndpoint
@@ -145,7 +146,16 @@ function M.parse_reddit_endpoint(path)
         path = "/" .. path
     end
 
-    -- remove query parameters
+    -- This only handles query parameters with keys and values
+    ---@type table<string, string>
+    local params = {}
+    local query_string = path:match("%?(.*)$")
+    if query_string then
+        for key, value in query_string:gmatch("([^&=]+)=([^&=]+)") do
+            params[key] = value
+        end
+    end
+
     path = path:gsub("%?.*$", "")
 
     ---@type string|nil
@@ -177,6 +187,7 @@ function M.parse_reddit_endpoint(path)
         type = type,
         subreddit = subreddit,
         user = user,
+        params = params,
     }
 end
 

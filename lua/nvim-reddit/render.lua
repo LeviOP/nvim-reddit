@@ -1259,6 +1259,48 @@ function M.listing(listing, endpoint)
         ::continue::
     end
 
+    if listing.data.after ~= vim.NIL or listing.data.before ~= vim.NIL then
+        local more_line = "view more: "
+        local prev =  "‹ prev"
+        local next =  "next ›"
+        local len = more_line:len()
+        if listing.data.before ~= vim.NIL then
+            more_line = more_line .. prev
+            table.insert(marks, {
+                details = {
+                    hl_group = "RedditNavButton"
+                },
+                line = line,
+                start_col = len,
+                end_col = len + prev:len(),
+            })
+            if listing.data.after ~= vim.NIL then
+                more_line = more_line .. " | "
+                len = more_line:len()
+                more_line = more_line .. next
+                table.insert(marks, {
+                    details = {
+                        hl_group = "RedditNavButton"
+                    },
+                    line = line,
+                    start_col = len,
+                    end_col = len + next:len(),
+                })
+            end
+        else
+            more_line = more_line .. next
+            table.insert(marks, {
+                details = {
+                    hl_group = "RedditNavButton"
+                },
+                line = line,
+                start_col = len,
+                end_col = len + next:len(),
+            })
+        end
+        table.insert(lines, more_line)
+    end
+
     return lines, marks, things, foldlevels
 end
 

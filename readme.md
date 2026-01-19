@@ -13,11 +13,13 @@ todo:
   - handle crossposts
     - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
 - handle rich:video and similar
+- handle duplicate buffers
+  - maybe allow reloading?
 - support contest mode
+- standardize variable/parameter names to make understanding offsets (0 or 1 based, column or byte based, abstract or direct data, etc.)
 - maybe indicate when `more` children returned nothing
 - maybe make foldtext children the number of decendents instead of direct children (like offical reddit ui)
 - only show link with sticked text on subreddit
-- figure out opening large (high resolution) images takes so long with image.nvim
 - figure out why virtual padding sometimes isn't displayed until a redraw (probably image.nvim's fault)
 - handle buffer being open in multiple windows
 - use style linter

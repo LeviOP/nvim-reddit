@@ -139,6 +139,8 @@ function M.open(path)
     end
 
     local endpoint = util.parse_reddit_endpoint(path)
+    -- it's nicer if we don't let the user (or code) know about this
+    endpoint.params["raw_json"] = nil
 
     vim.schedule(function()
         if endpoint.type == "listing" then
@@ -224,6 +226,43 @@ function M.open(path)
             end, { buffer = buffer })
             vim.keymap.set("n", "k", function()
                 state.jump(buffer, 1)
+            end, { buffer = buffer })
+        end
+
+
+        if endpoint.type == "listing" then
+            ---@param dir "before"|"after"
+            local function listing_nav(dir)
+                ---@type string|vim.NIL
+                local from = response.data.data[dir]
+                if from == vim.NIL then
+                    print("There is nothing in this direction!")
+                    return
+                end ---@cast from -vim.NIL
+                vim.async.run(function()
+                    local url = path:gsub("%?.*$", "")
+                    endpoint.params.before = nil
+                    endpoint.params.after = nil
+                    -- the type annotation for tonumber() is incorrect -- it can take any type
+                    endpoint.params.count = tostring(
+                        (tonumber(endpoint.params.count--[[@as string]], 10) or 0)
+                        +
+                        (dir == "after" and (tonumber(endpoint.params.limit--[[@as string]], 10) or 25) or 1)
+                    )
+                    endpoint.params[dir] = from
+                    url = url .. "?"
+                    for key, value in pairs(endpoint.params) do
+                        url = url .. key .. "=" .. value .. "&"
+                    end
+                    url = url:sub(1, -2)
+                    M.open(url)
+                end)
+            end
+            vim.keymap.set("n", "gln", function()
+                listing_nav("after")
+            end, { buffer = buffer })
+            vim.keymap.set("n", "glp", function()
+                listing_nav("before")
             end, { buffer = buffer })
         end
 
