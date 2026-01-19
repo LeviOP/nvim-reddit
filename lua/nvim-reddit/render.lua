@@ -1024,8 +1024,8 @@ function M.comment(thing, render_children)
                     local url = mark.details.url
                     if url and url == media.s.u then
                         thing.media = {
-                            url = media.s.u,
-                            line = mark.line
+                            media = media,
+                            line = mark.line,
                         }
                         -- This is a super duper hack. Doing it in any other way would be way more
                         -- annoying, though. Might cause issues down the line :)
@@ -1043,7 +1043,7 @@ function M.comment(thing, render_children)
                         local url = mark.details.url
                         if url and url == media.ext then
                             thing.media = {
-                                url = media.s.gif,
+                                media = media,
                                 line = mark.line,
                             }
                             goto found
@@ -1054,7 +1054,7 @@ function M.comment(thing, render_children)
                         local url = mark.details.url
                         if url and url == media.s.gif then
                             thing.media = {
-                                url = media.s.gif,
+                                media = media,
                                 line = mark.line
                             }
                             local line = rendered_lines[mark.line + 1]
@@ -1182,8 +1182,8 @@ function M.sidebar(thing)
     return rendered_lines, marks
 end
 
----@class (exact) NvimReddit.Image
----@field url string
+---@class (exact) NvimReddit.InlineMedia
+---@field media NvimReddit.Media
 ---@field line integer
 
 ---@class (exact) NvimReddit.ThingMark

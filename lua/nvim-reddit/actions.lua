@@ -201,7 +201,7 @@ local function gallery_nav(thing, reddit_buf, dir)
     ---@type NvimReddit.MediaPreview
     local best = { u = "", x = 0, y = 0 }
     for _, res in ipairs(media.p) do
-        if res.y > best.y and res.y <= 480 then
+        if res.y > best.y and (best.y == 0 or res.y <= 480) then
             best = res
         end
     end
@@ -234,12 +234,25 @@ local function gallery_nav(thing, reddit_buf, dir)
 
     local margin = config.spacing.score_margin + 1
 
+    if thing.player_job then
+        thing.player_job:kill("sigterm")
+        thing.player_job = nil
+    end
+
     reddit_buf.images[thing.data.id]:clear()
     reddit_buf.images[thing.data.id] = image
     reddit_buf.images[thing.data.id]:render({
         y = thing_mark_end - 1,
         x = margin
     })
+
+    if media.e == "AnimatedImage" and config.use_gif_player then
+        ---@type string[]
+        local player_args = {}
+        for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
+        table.insert(player_args, media.s.mp4)
+        thing.player_job = vim.system(player_args, nil, config.player_onexit)
+    end
 end
 
 ---@param thing NvimReddit.Selectable

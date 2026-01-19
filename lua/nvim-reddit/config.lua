@@ -11,7 +11,9 @@ local util = require("nvim-reddit.util")
 ---@field keymaps NvimReddit.Keymap[]
 ---@field spacing NvimReddit.SpacingConfig
 ---@field render_offset_top integer
+---@field use_gif_player boolean
 ---@field player_options string[]
+---@field gif_player_options string[]
 ---@field player_onexit fun(out: vim.SystemCompleted)?
 ---@field icons boolean
 local M = {}
@@ -133,7 +135,9 @@ function M.defaults()
             max_line_length = 120
         },
         render_offset_top = 0,
+        use_gif_player = true,
         player_options = {"mpv", "--keep-open=yes", "--loop=inf", "--x11-name=mpv-float"},
+        gif_player_options = {"mpv", "--keep-open=yes", "--loop=inf", "--x11-name=mpv-gif-float"},
         player_onexit = function (out)
             -- mpv uses exit code 4 when quit due to a signal (which is how we kill it if closing expando)
             if require("nvim-reddit.config").player_options[1] == "mpv" and out.code == 4 then return end

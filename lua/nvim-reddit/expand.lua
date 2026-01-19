@@ -18,14 +18,44 @@ function M.comment(thing, reddit_buf, thing_mark_start)
     if not thing.open then
         vim.async.run(function()
             if reddit_buf.images[thing.data.id] == nil then
+                local media = thing.media.media
+                local url
+                ---@type NvimReddit.MediaPreview
+                local best = { u = "", x = 0, y = 0 }
+                for _, res in ipairs(media.p) do
+                    if res.y > best.y and (best.y == 0 or res.y <= 480) then
+                        best = res
+                    end
+                end
+                if best.y >= 400 then
+                    url = best.u
+                else
+                    if media.e == "Image" then
+                        url = media.s.u
+                    elseif media.e == "AnimatedImage" then
+                        url = media.s.gif
+                    else
+                        print("Unhandled gallery type:", media.e)
+                        return
+                    end
+                end
+
+                if media.e == "AnimatedImage" and config.use_gif_player then
+                    ---@type string[]
+                    local player_args = {}
+                    for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
+                    table.insert(player_args, media.s.mp4)
+                    thing.player_job = vim.system(player_args, nil, config.player_onexit)
+                end
+
                 vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
                 ---@type Image|nil
                 ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
-                local image = vim.async.await(3, image_api.from_url, thing.media.url, {
+                local image = vim.async.await(3, image_api.from_url, url, {
                     buffer = reddit_buf.buffer,
                     window = vim.api.nvim_get_current_win(),
                     with_virtual_padding = true,
-                    height = 20,
+                    -- height = 20,
                     render_offset_top = config.render_offset_top
                 })
                 if image == nil then
@@ -43,6 +73,10 @@ function M.comment(thing, reddit_buf, thing_mark_start)
             thing.open = true
         end):wait()
     else
+        if thing.player_job then
+            thing.player_job:kill("sigterm")
+            thing.player_job = nil
+        end
         reddit_buf.images[thing.data.id]:clear()
         reddit_buf.images[thing.data.id] = nil
         thing.open = false
@@ -76,6 +110,22 @@ function M.link(thing, reddit_buf, thing_mark_end)
                                 end
                             end
                             url = best.url
+
+                            if config.use_gif_player then
+                                local player_url
+                                if image.variants.mp4 then
+                                    player_url = image.variants.mp4.source.url
+                                elseif image.variants.gif then
+                                    player_url = image.variants.gif.source.url
+                                end
+                                if player_url then
+                                    ---@type string[]
+                                    local player_args = {}
+                                    for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
+                                    table.insert(player_args, player_url)
+                                    thing.player_job = vim.system(player_args, nil, config.player_onexit)
+                                end
+                            end
                         end
                         if not url then
                             url = thing.data.url_overridden_by_dest
@@ -151,6 +201,14 @@ function M.link(thing, reddit_buf, thing_mark_end)
                             print("Unhandled gallery type:", media.e)
                             return
                         end
+                    end
+
+                    if media.e == "AnimatedImage" and config.use_gif_player then
+                        ---@type string[]
+                        local player_args = {}
+                        for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
+                        table.insert(player_args, media.s.mp4)
+                        thing.player_job = vim.system(player_args, nil, config.player_onexit)
                     end
 
                     -- disable while async

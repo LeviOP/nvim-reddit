@@ -24,7 +24,7 @@
 ---@field data NvimReddit.CommentData
 ---@field kind "t1"
 ---@field padding integer|nil
----@field media NvimReddit.Image|nil
+---@field media NvimReddit.InlineMedia|nil
 ---@field open boolean|nil
 ---@field player_job vim.SystemObj|nil
 ---@field mark integer|nil
@@ -257,8 +257,18 @@
 ---@class (exact) NvimReddit.PreviewImage
 ---@field id string
 ---@field source NvimReddit.PreviewImageSource
----@field variants NvimReddit.Gildings
+---@field variants NvimReddit.PreviewVariants
 ---@field resolutions NvimReddit.PreviewImageSource[]
+
+---@class (exact) NvimReddit.PreviewVariants
+---@field obfuscated? NvimReddit.PreviewVariant
+---@field nsfw? NvimReddit.PreviewVariant
+---@field gif? NvimReddit.PreviewVariant
+---@field mp4? NvimReddit.PreviewVariant
+
+---@class (exact) NvimReddit.PreviewVariant
+---@field source NvimReddit.PreviewImageSource
+---@field reseolutions NvimReddit.PreviewImageSource[]
 
 ---@class (exact) NvimReddit.PreviewImageSource
 ---@field url string
