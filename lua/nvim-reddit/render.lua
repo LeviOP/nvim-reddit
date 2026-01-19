@@ -829,7 +829,7 @@ function M.link(thing)
                 link.domain,
                 pre = "(",
                 post = ")",
-                marks = {{ hl_group = "RedditAnchor", url = { REDDIT_BASE .. thing.domain_url, condition = thing.domain_url ~= nil } }},
+                marks = {{ hl_group = "RedditAnchor", url = { REDDIT_BASE .. thing.domain_url, condition = thing.domain_url ~= "" } }},
             },
         },
         {
@@ -1214,7 +1214,7 @@ function M.listing(listing, endpoint)
         elseif thing.kind == "t3" then
             -- crossposts don't have a domain
             if thing.data.domain == "" then
-                thing.domain_url = nil
+                thing.domain_url = ""
             else
                 ---@type string
                 local url_domain = thing.data.url:match("^%w+://([^/:?#]+)")
