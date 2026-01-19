@@ -37,6 +37,7 @@ todo:
   - comment the code better?? i have no idea what's going on in there at this point
 - indicate whether link is expandable
 - maybe render directly instead of rendering text and shifting it around (luajit is very fast :)
+- maybe optmize all table accesses / insertions (it's already super fast though)
 - maybe show thumbnails? (probably not)
 - maybe show comment depth / parenting with background color change or "tree lines"
 - add "hovers" for various stuff

@@ -444,7 +444,9 @@ function M.richtext(richtext, width)
             end
         end
     end
-    lines[line + 1] = current
+    if current:len() ~= 0 then
+        lines[line + 1] = current
+    end
     return lines, marks
 end
 
