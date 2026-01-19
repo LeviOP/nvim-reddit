@@ -1,6 +1,11 @@
 vim.api.nvim_set_hl(0, "RedditStickied", {
     foreground = "#228822",
-    bold = true
+    bold = true,
+})
+
+vim.api.nvim_set_hl(0, "RedditPinned", {
+    foreground = "#008985",
+    bold = true,
 })
 
 vim.api.nvim_set_hl(0, "RedditUpvoted", {

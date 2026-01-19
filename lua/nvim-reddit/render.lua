@@ -816,7 +816,11 @@ function M.link(thing)
             -- apparently post titles are not santized on ingest, but at the client. there can be double spaces, newlines, etc.
             {
                 link.title:gsub("%s+", " "),
-                marks = {{ hl_group = { "RedditStickied", condition = link.stickied }, url = link.url }},
+                marks = {
+                    { url = link.url },
+                    { hl_group = { "RedditStickied", condition = link.stickied },
+                    { hl_group = { "RedditPinned", condition = link.pinned },
+                },
             },
             {
                 link.domain,
@@ -850,6 +854,18 @@ function M.link(thing)
                 link.subreddit_name_prefixed,
                 condition = thing.show_subreddit,
                 marks = {{ hl_group = "RedditAnchor", url = REDDIT_BASE .. link.subreddit_name_prefixed }},
+            },
+            {
+                "announcment",
+                pre = "- ",
+                marks = {{ hl_group = "RedditStickied" }},
+                condition = link.stickied,
+            },
+            {
+                "pinned",
+                pre = "- ",
+                marks = {{ hl_group = "RedditPinned" }},
+                condition = link.pinned,
             },
         },
         {
@@ -1154,7 +1170,7 @@ function M.sidebar(thing)
     local lines = {
         -- maybe .url should be used instead? this is just more convenient
         { { subreddit.display_name, marks = {{ hl_group = "RedditH1", url = REDDIT_BASE .. subreddit.display_name_prefixed } }} },
-        { { subreddit.description_html, mdhtml = true, condition = subreddit.description_html ~= vim.NIL } },
+        { { subreddit.description_html--[[@as string]], mdhtml = true, condition = subreddit.description_html ~= vim.NIL } },
         -- HACK: add actual hr instead of just replicating markdown html
         { { "<div><hr></div>" , mdhtml = true } },
         { { "a community for " .. util.time_since(subreddit.created_utc) } }
