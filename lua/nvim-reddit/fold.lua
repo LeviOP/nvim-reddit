@@ -1,14 +1,15 @@
 -- this file contains no error checking for speed. you'd have to do something
 -- pretty messed up (setting foldexpr for non-reddit buffer) for this to error
 
+local state = require("nvim-reddit.state")
+
 local M = {}
 
 function M.expr()
-    return require("nvim-reddit.state").buffers[vim.api.nvim_get_current_buf()].foldlevels[vim.v.lnum] or 0
+    return state.buffers[vim.api.nvim_get_current_buf()].foldlevels[vim.v.lnum] or 0
 end
 
 function M.text()
-    local state = require("nvim-reddit.state")
     local reddit_buf = state.buffers[vim.api.nvim_get_current_buf()]
     local pos = { vim.v.foldstart - 1, 0 }
     local buf_marks = vim.api.nvim_buf_get_extmarks(reddit_buf.buffer, state.tns, pos, pos, { details = true, overlap = true })
