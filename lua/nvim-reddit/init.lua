@@ -36,7 +36,7 @@ function M.setup(options)
     vim.api.nvim_create_user_command("Reddit", function(opts)
         vim.async.run(function()
             buffer.open(opts.args:gsub("%s+$", ""))
-        end)
+        end):wait()
     end, { nargs = "?" })
 end
 

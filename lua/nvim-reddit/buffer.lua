@@ -5,7 +5,7 @@ local config = require("nvim-reddit.config")
 
 local tns = state.tns
 
----@module "image"
+---@module "reddit-image"
 
 local M = {}
 
@@ -14,6 +14,7 @@ local M = {}
 ---@field mark_thing_map table<integer, NvimReddit.Selectable>
 ---@field selected_mark_id integer|nil
 ---@field images table<string, Image>
+--- 1-indexed
 ---@field foldlevels NvimReddit.FoldLevels
 
 ---@param reddit_buf NvimReddit.Buffer

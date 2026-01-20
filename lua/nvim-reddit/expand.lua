@@ -6,7 +6,7 @@ local render = require("nvim-reddit.render")
 
 local ns = state.ns
 
-local image_api = require("image")
+local image_api = require("reddit-image")
 
 local M = {}
 
@@ -17,7 +17,7 @@ function M.comment(thing, reddit_buf, thing_mark_start)
     if not thing.media then return end
     if not thing.open then
         vim.async.run(function()
-            if reddit_buf.images[thing.data.id] == nil then
+            if not reddit_buf.images[thing.data.id] then
                 local media = thing.media.media
                 local url
                 ---@type NvimReddit.MediaPreview
@@ -55,8 +55,7 @@ function M.comment(thing, reddit_buf, thing_mark_start)
                     buffer = reddit_buf.buffer,
                     window = vim.api.nvim_get_current_win(),
                     with_virtual_padding = true,
-                    -- height = 20,
-                    render_offset_top = config.render_offset_top
+                    height = 20,
                 })
                 if image == nil then
                     print("image was nil?!?!")
@@ -69,10 +68,12 @@ function M.comment(thing, reddit_buf, thing_mark_start)
             if config.set_topline_on_expand then
                 vim.fn.winrestview({ topline = thing_mark_start + 1 })
             end
-            reddit_buf.images[thing.data.id]:render({
+            local image = reddit_buf.images[thing.data.id]
+            image:render({
                 y = thing_mark_start + thing.media.line,
-                x = thing.media.byte
+                x = thing.padding + 2
             })
+
             thing.open = true
         end):wait()
     else
@@ -148,7 +149,6 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                             window = vim.api.nvim_get_current_win(),
                             with_virtual_padding = true,
                             height = 20,
-                            render_offset_top = config.render_offset_top,
                         })
                         if image == nil then
                             print("image was nil?!?!")
@@ -160,10 +160,26 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                         vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
                     end
 
-                    reddit_buf.images[thing.data.id]:render({
-                        y = thing_mark_end - 1,
+                    local image = reddit_buf.images[thing.data.id]
+
+                    image:render({
+                        y = thing_mark_end - 1, -- this is one below, in 0-index land
                         x = margin
                     })
+
+                    local image_id = image.extmark.id
+                    local image_ns = image.global_state.extmarks_namespace
+
+                    local row, col, details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, image_ns, image_id, { details = true }))
+                    details.ns_id = nil
+                    details.id = image_id
+                    for _, virt_line in ipairs(details.virt_lines) do
+                        virt_line[1][1] = (" "):rep(500)
+                        virt_line[1][2] = "RedditExpanded"
+                    end
+
+                    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, image_ns, row, col, details)
+
                     ::exit::
                 elseif hint ~= "link" and hint ~= "self" then
                     vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. "<" .. hint .. ">"})
@@ -221,6 +237,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
 
                     -- disable while async
                     vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+
                     ---@type Image|nil
                     ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
                     local image = vim.async.await(3, image_api.from_url, url, {
@@ -228,7 +245,6 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                         window = vim.api.nvim_get_current_win(),
                         with_virtual_padding = true,
                         height = 20,
-                        render_offset_top = config.render_offset_top,
                     })
                     if image == nil then
                         print("image was nil?!?!")
@@ -241,10 +257,29 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                     vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
                 end
 
-                reddit_buf.images[thing.data.id]:render({
-                    y = thing_mark_end - 1,
+
+                vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items })
+                line_num = line_num + 1
+
+                local image = reddit_buf.images[thing.data.id]
+                image:render({
+                    y = thing_mark_end,
                     x = margin
                 })
+
+                local image_id = image.extmark.id
+                local image_ns = image.global_state.extmarks_namespace
+
+                local row, col, details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, image_ns, image_id, { details = true }))
+                details.ns_id = nil
+                details.id = image_id
+                for _, virt_line in ipairs(details.virt_lines) do
+                    virt_line[1][1] = (" "):rep(500)
+                    virt_line[1][2] = "RedditExpanded"
+                end
+
+                vim.api.nvim_buf_set_extmark(reddit_buf.buffer, image_ns, row, col, details)
+
                 ::exit::
             elseif thing.data.crosspost_parent then
                 vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. "<crosspost>"})

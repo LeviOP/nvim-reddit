@@ -8,7 +8,7 @@ local expand = require("nvim-reddit.expand")
 local ns = state.ns
 local tns = state.tns
 
-local image_api = require("image")
+local image_api = require("reddit-image")
 
 -- This is different than other files! includes a trailing slash. unify at some point
 local REDDIT_BASE = "https://www.reddit.com"
@@ -228,7 +228,6 @@ local function gallery_nav(thing, reddit_buf, dir)
         window = vim.api.nvim_get_current_win(),
         with_virtual_padding = true,
         height = 20,
-        render_offset_top = config.render_offset_top,
     })
     if image == nil then
         print("image was nil?!?!")
@@ -242,12 +241,39 @@ local function gallery_nav(thing, reddit_buf, dir)
         thing.player_job = nil
     end
 
+    local row, _, expando_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, ns, thing.expando_mark, { details = true }))
+
+    vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
+    vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end + 1, false, {(" "):rep(margin) .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items })
+    vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+
+    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, row, 0, {
+        id = thing.expando_mark,
+        end_row = expando_details.end_row,
+        hl_group = "RedditExpanded",
+        hl_eol = true,
+        priority = 50,
+    })
+
     reddit_buf.images[thing.data.id]:clear()
     reddit_buf.images[thing.data.id] = image
     reddit_buf.images[thing.data.id]:render({
-        y = thing_mark_end - 1,
-        x = margin
+        y = thing_mark_end,
+        x = margin,
     })
+
+    local image_id = image.extmark.id
+    local image_ns = image.global_state.extmarks_namespace
+
+    local row, col, details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, image_ns, image_id, { details = true }))
+    details.ns_id = nil
+    details.id = image_id
+    for _, virt_line in ipairs(details.virt_lines) do
+        virt_line[1][1] = (" "):rep(500)
+        virt_line[1][2] = "RedditExpanded"
+    end
+
+    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, image_ns, row, col, details)
 
     if media.e == "AnimatedImage" and config.use_gif_player then
         ---@type string[]

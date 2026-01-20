@@ -9,7 +9,6 @@ todo:
   - move refresh token into the correct place.. blehhh
   - type config defaults / optionals correctly
 - handle post types correctly
-  - add progress indicator to gallery
   - handle crossposts
     - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
 - handle rich:video and similar
@@ -18,17 +17,16 @@ todo:
 - support contest mode
 - standardize variable/parameter names to make understanding offsets (0 or 1 based, column or byte based, abstract or direct data, etc.)
 - maybe indicate when `more` children returned nothing
-- maybe make foldtext children the number of decendents instead of direct children (like offical reddit ui)
+- clean up expando rendering (unified image resolution picking and rendering)
+- maybe make foldtext children the number of decedents instead of direct children (like official reddit ui)
 - only show link with sticked text on subreddit
 - figure out why virtual padding sometimes isn't displayed until a redraw (probably image.nvim's fault)
-- figure out why inline images on newline render at the wrong position (even though mark is in the right spot) (image.nvim bug)
 - handle buffer being open in multiple windows
 - use style linter
 - handle score digit count being higher than score margin
 - show errors onscreen instead of printing (and use vim.notify)
 - maybe make separate wrapped type for state stored on things to reduce confusion
 - handle nsfw/spoiler links
-- differentiate when `removal_reason` is not null
 - support replying (and posting)
 - collapse richtext rendering with state table
   - apparently if some markup ends on the word after a newline the markup isn't applied to the line before
@@ -37,7 +35,7 @@ todo:
   - comment the code better?? i have no idea what's going on in there at this point
 - indicate whether link is expandable
 - maybe render directly instead of rendering text and shifting it around (luajit is very fast :)
-- maybe optmize all table accesses / insertions (it's already super fast though)
+- maybe optimize all table accesses / insertions (it's already super fast though)
 - maybe show thumbnails? (probably not)
 - maybe show comment depth / parenting with background color change or "tree lines"
 - add "hovers" for various stuff

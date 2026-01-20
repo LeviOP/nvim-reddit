@@ -183,7 +183,7 @@
 ---@class (exact) NvimReddit.GalleryItem
 ---@field id integer
 ---@field media_id string
----@field caption string | nil
+---@field caption? string
 
 ---@class (exact) NvimReddit.Gildings
 -- unknown
