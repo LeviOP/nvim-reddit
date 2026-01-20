@@ -92,7 +92,11 @@ end
 ---@param thing_mark_start integer
 ---@param thing_mark_end integer
 function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
-    local line_num = 0
+    ---@type string[]
+    local lines = {}
+    ---@type NvimReddit.Mark[]
+    local marks = {}
+    local line = 0
     local hint = thing.data.post_hint
     vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
     if not thing.open then
@@ -137,11 +141,9 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                             end
                         end
                         if not url then
-                            url = thing.data.url_overridden_by_dest
+                            url = thing.data.url_overridden_by_dest or thing.data.url
                         end
 
-                        -- disable while async
-                        vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
                         ---@type Image|nil
                         ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
                         local image = vim.async.await(3, image_api.from_url, url, {
@@ -149,6 +151,8 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                             window = vim.api.nvim_get_current_win(),
                             with_virtual_padding = true,
                             height = 20,
+                            y = thing_mark_end - 1,
+                            x = margin,
                         })
                         if image == nil then
                             print("image was nil?!?!")
@@ -156,34 +160,12 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                         end
 
                         reddit_buf.images[thing.data.id] = image
-                        -- re-enable after async
-                        vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
                     end
-
-                    local image = reddit_buf.images[thing.data.id]
-
-                    image:render({
-                        y = thing_mark_end - 1, -- this is one below, in 0-index land
-                        x = margin
-                    })
-
-                    local image_id = image.extmark.id
-                    local image_ns = image.global_state.extmarks_namespace
-
-                    local row, col, details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, image_ns, image_id, { details = true }))
-                    details.ns_id = nil
-                    details.id = image_id
-                    for _, virt_line in ipairs(details.virt_lines) do
-                        virt_line[1][1] = (" "):rep(500)
-                        virt_line[1][2] = "RedditExpanded"
-                    end
-
-                    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, image_ns, row, col, details)
 
                     ::exit::
                 elseif hint ~= "link" and hint ~= "self" then
-                    vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. "<" .. hint .. ">"})
-                    line_num = line_num + 1
+                    table.insert(lines, (" "):rep(margin) .. "<" .. hint .. ">")
+                    line = line + 1
                     if hint == "hosted:video" then
                         if thing.data.secure_media.reddit_video then
                             ---@type string[]
@@ -235,9 +217,6 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                         thing.player_job = vim.system(player_args, nil, config.player_onexit)
                     end
 
-                    -- disable while async
-                    vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
-
                     ---@type Image|nil
                     ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
                     local image = vim.async.await(3, image_api.from_url, url, {
@@ -245,27 +224,71 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                         window = vim.api.nvim_get_current_win(),
                         with_virtual_padding = true,
                         height = 20,
+                        y = thing_mark_end,
+                        x = margin,
                     })
                     if image == nil then
                         print("image was nil?!?!")
-                        vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
                         goto exit
                     end
 
                     reddit_buf.images[thing.data.id] = image
-                    -- re-enable after async
-                    vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
                 end
 
+                table.insert(lines, (" "):rep(margin) .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items)
+                line = line + 1
 
-                vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items })
-                line_num = line_num + 1
+                ::exit::
+            elseif thing.data.crosspost_parent then
+                table.insert(lines, (" "):rep(margin) .. "<crosspost>")
+                line = line + 1
+            end
 
-                local image = reddit_buf.images[thing.data.id]
-                image:render({
-                    y = thing_mark_end,
-                    x = margin
-                })
+            local selftext_html = thing.data.selftext_html
+            if selftext_html ~= vim.NIL then ---@cast selftext_html -vim.NIL -- why can't luals figure this out???
+                if thing.parsed == nil then
+                    local blocks = html.parse_md(selftext_html)
+                    thing.parsed = blocks
+                end
+
+                local width = util.get_window_text_width(0)
+
+                local expando_lines, expando_marks = render.blocks(thing.parsed, math.min(width, config.spacing.max_line_length) - margin)
+                for _, expando_line in ipairs(expando_lines) do
+                    if expando_line == "" then
+                        table.insert(lines, "")
+                    else
+                        table.insert(lines, (" "):rep(margin) .. expando_line)
+                    end
+                end
+
+                for _, mark in ipairs(expando_marks) do
+                    if mark.details.virt_text_win_col then
+                        mark.details.virt_text_win_col = mark.details.virt_text_win_col + margin
+                        if mark.start_col == mark.end_col then
+                            goto add
+                        end
+                    end
+                    mark.line = mark.line + line
+                    mark.start_col = mark.start_col + margin
+                    mark.end_col = mark.end_col + margin
+                    ::add::
+                    table.insert(marks, mark)
+                end
+                line = line + #expando_lines
+            end
+
+            ---@type integer[]
+            local foldlevels = {}
+            for i = 1, #lines do
+                foldlevels[i] = 0
+            end
+
+            util.draw(reddit_buf, lines, marks, {}, foldlevels, thing_mark_end, thing_mark_end)
+
+            local image = reddit_buf.images[thing.data.id]
+            if image then
+                image:render()
 
                 local image_id = image.extmark.id
                 local image_ns = image.global_state.extmarks_namespace
@@ -279,58 +302,11 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                 end
 
                 vim.api.nvim_buf_set_extmark(reddit_buf.buffer, image_ns, row, col, details)
-
-                ::exit::
-            elseif thing.data.crosspost_parent then
-                vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end, false, {(" "):rep(margin) .. "<crosspost>"})
-                line_num = line_num + 1
-            end
-
-            local selftext_html = thing.data.selftext_html
-            if selftext_html ~= vim.NIL then ---@cast selftext_html -vim.NIL -- why can't luals figure this out???
-                if thing.parsed == nil then
-                    local blocks = html.parse_md(selftext_html)
-                    thing.parsed = blocks
-                end
-
-                local width = util.get_window_text_width(0)
-
-                local lines, marks = render.blocks(thing.parsed, math.min(width, config.spacing.max_line_length) - margin)
-                for i, line in ipairs(lines) do
-                    if line == "" then
-                        lines[i] = ""
-                    else
-                        lines[i] = (" "):rep(margin) .. line
-                    end
-                end
-
-                vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end + line_num, thing_mark_end + line_num, false, lines)
-                for _, mark in ipairs(marks) do
-                    if mark.details.virt_text_win_col then
-                        mark.details.virt_text_win_col = mark.details.virt_text_win_col + margin
-                        if mark.start_col == mark.end_col then
-                            goto draw
-                        end
-                    end
-                    mark.details.priority = mark.details.priority or 100
-                    mark.details.end_row = thing_mark_end + line_num + mark.line
-                    mark.details.end_col = mark.end_col + margin
-                    mark.start_col = mark.start_col + margin
-                    ::draw::
-                    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end + line_num + mark.line, mark.start_col, mark.details)
-                end
-                line_num = line_num + #lines
-            end
-
-            -- FIXME: repeated table.insert is needlessly slow (and in other places)
-            local buffer_foldlevels = reddit_buf.foldlevels
-            for _ = thing_mark_end, thing_mark_end + line_num - 1 do
-                table.insert(buffer_foldlevels, thing_mark_end + 1, 0)
             end
 
             thing.expando_mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end, 0, {
                 id = thing.expando_mark,
-                end_row = thing_mark_end + line_num,
+                end_row = thing_mark_end + line,
                 hl_group = "RedditExpanded",
                 hl_eol = true,
                 priority = 50,
