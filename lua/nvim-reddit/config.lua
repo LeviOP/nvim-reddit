@@ -8,7 +8,6 @@
 ---@field port integer
 ---@field keymaps NvimReddit.Keymap[]
 ---@field spacing NvimReddit.SpacingConfig
----@field render_offset_top integer
 ---@field use_gif_player boolean
 ---@field player_options string[]
 ---@field gif_player_options string[]
@@ -137,7 +136,6 @@ function M.defaults()
             score_margin = 6,
             max_line_length = 120
         },
-        render_offset_top = 0,
         use_gif_player = true,
         player_options = {"mpv", "--keep-open=yes", "--loop=inf", "--x11-name=mpv-float"},
         gif_player_options = {"mpv", "--keep-open=yes", "--loop=inf", "--x11-name=mpv-gif-float"},
