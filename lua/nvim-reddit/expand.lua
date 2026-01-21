@@ -150,7 +150,6 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                             buffer = reddit_buf.buffer,
                             window = vim.api.nvim_get_current_win(),
                             with_virtual_padding = true,
-                            height = 20,
                             y = thing_mark_end - 1,
                             x = margin,
                         })
@@ -158,6 +157,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                             print("image was nil?!?!")
                             goto exit
                         end
+                        M.watch_image_extmark(image)
 
                         reddit_buf.images[thing.data.id] = image
                     end
@@ -223,7 +223,6 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                         buffer = reddit_buf.buffer,
                         window = vim.api.nvim_get_current_win(),
                         with_virtual_padding = true,
-                        height = 20,
                         y = thing_mark_end,
                         x = margin,
                     })
@@ -231,6 +230,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                         print("image was nil?!?!")
                         goto exit
                     end
+                    M.watch_image_extmark(image)
 
                     reddit_buf.images[thing.data.id] = image
                 end
@@ -289,19 +289,6 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
             local image = reddit_buf.images[thing.data.id]
             if image then
                 image:render()
-
-                local image_id = image.extmark.id
-                local image_ns = image.global_state.extmarks_namespace
-
-                local row, col, details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, image_ns, image_id, { details = true }))
-                details.ns_id = nil
-                details.id = image_id
-                for _, virt_line in ipairs(details.virt_lines) do
-                    virt_line[1][1] = (" "):rep(500)
-                    virt_line[1][2] = "RedditExpanded"
-                end
-
-                vim.api.nvim_buf_set_extmark(reddit_buf.buffer, image_ns, row, col, details)
             end
 
             thing.expando_mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end, 0, {
@@ -319,8 +306,9 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
             thing.player_job:kill("sigterm")
             thing.player_job = nil
         end
-        if hint == "image" or thing.data.is_gallery then
-            reddit_buf.images[thing.data.id]:clear()
+        local image = reddit_buf.images[thing.data.id]
+        if image then
+            image:clear()
             reddit_buf.images[thing.data.id] = nil
         end
 
@@ -340,6 +328,48 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
         thing.open = false
     end
     vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+end
+
+---@param image Image
+function M.watch_image_extmark(image)
+    local mt = getmetatable(image) or {}
+    local old_index = mt.__index
+
+    local extmark
+    mt.__index = function(t, key)
+        print(t, key)
+        if key == "extmark" then
+            return extmark
+        end
+        if type(old_index) == "function" then
+            return old_index(t, key)
+        elseif type(old_index) == "table" then
+            return old_index[key]
+        else
+            return rawget(t, key)
+        end
+    end
+    mt.__newindex = function(t, key, value)
+        print(t, key, value)
+        if key == "extmark" then
+            extmark = value
+
+            local image_ns = t.global_state.extmarks_namespace
+
+            local row, col, details = unpack(vim.api.nvim_buf_get_extmark_by_id(t.buffer, image_ns, value.id, { details = true }))
+            details.ns_id = nil
+            details.id = value.id
+            for _, virt_line in ipairs(details.virt_lines) do
+                virt_line[1][1] = (" "):rep(vim.api.nvim_win_get_width(0))
+                virt_line[1][2] = "RedditExpanded"
+            end
+
+            vim.api.nvim_buf_set_extmark(t.buffer, image_ns, row, col, details)
+            return
+        end
+        rawset(t, key, value)
+    end
+    setmetatable(image, mt)
 end
 
 return M

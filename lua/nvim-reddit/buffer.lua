@@ -17,47 +17,6 @@ local M = {}
 --- 1-indexed
 ---@field foldlevels NvimReddit.FoldLevels
 
----@param reddit_buf NvimReddit.Buffer
-local function cursor_moved(reddit_buf)
-    local cursor = vim.api.nvim_win_get_cursor(0);
-    local pos = { cursor[1] - 1, cursor[2] }
-    local buf_marks = vim.api.nvim_buf_get_extmarks(reddit_buf.buffer, tns, pos, pos, { details = true, overlap = true })
-    local mark_count = #buf_marks
-    if mark_count ~= 1 then
-        if mark_count > 1 then
-            print("we found more than one mark for this thing???")
-            for _, buf_mark in ipairs(buf_marks) do
-                vim.print(buf_mark[1], reddit_buf.mark_thing_map[buf_mark[1]]);
-            end
-        end
-        return
-    end
-    local id, row, col, details = unpack(buf_marks[1])
-    -- these conditions have nothing to do with each other, fyi
-    if id == reddit_buf.selected_mark_id or details.end_row == pos[1] then
-        return
-    end
-
-    if reddit_buf.selected_mark_id ~= nil then
-        local selectedmark = vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true })
-        vim.api.nvim_buf_set_extmark(reddit_buf.buffer, tns, selectedmark[1], selectedmark[2], {
-            id = reddit_buf.selected_mark_id,
-            end_col = selectedmark[3].end_col,
-            end_row = selectedmark[3].end_row
-        })
-    end
-
-    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, tns, row, col, {
-        id = id,
-        hl_group = "RedditSelected",
-        hl_eol = true,
-        priority = 50,
-        end_col = details.end_col,
-        end_row = details.end_row
-    })
-    reddit_buf.selected_mark_id = id
-end
-
 ---@param path string
 function M.open(path)
     local buffer = vim.api.nvim_get_current_buf()
@@ -77,7 +36,7 @@ function M.open(path)
     vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {
         "Loading..."
     })
-
+    vim.api.nvim_set_option_value("modifiable", false, { buf = buffer })
     vim.api.nvim_set_current_buf(buffer)
 
     ---@type NvimReddit.Buffer
@@ -144,6 +103,7 @@ function M.open(path)
     endpoint.params["raw_json"] = nil
 
     vim.schedule(function()
+        vim.api.nvim_set_option_value("modifiable", true, { buf = buffer })
         if endpoint.type == "listing" then
             ---@type NvimReddit.Listing
             local listing = response.data
@@ -191,7 +151,7 @@ function M.open(path)
 
         vim.api.nvim_create_autocmd({"CursorMoved"}, {
             buffer = buffer,
-            callback = util.closure(cursor_moved, reddit_buf),
+            callback = util.closure(M.cursor_moved, reddit_buf),
         })
 
         vim.api.nvim_create_autocmd({"BufWinEnter"}, {
@@ -293,6 +253,47 @@ function M.open(path)
             vim.api.nvim_set_current_buf(buf)
         end, { buffer = buffer })
     end)
+end
+
+---@param reddit_buf NvimReddit.Buffer
+function M.cursor_moved(reddit_buf)
+    local cursor = vim.api.nvim_win_get_cursor(0);
+    local pos = { cursor[1] - 1, cursor[2] }
+    local buf_marks = vim.api.nvim_buf_get_extmarks(reddit_buf.buffer, tns, pos, pos, { details = true, overlap = true })
+    local mark_count = #buf_marks
+    if mark_count ~= 1 then
+        if mark_count > 1 then
+            print("we found more than one mark for this thing???")
+            for _, buf_mark in ipairs(buf_marks) do
+                vim.print(buf_mark[1], reddit_buf.mark_thing_map[buf_mark[1]]);
+            end
+        end
+        return
+    end
+    local id, row, col, details = unpack(buf_marks[1])
+    -- these conditions have nothing to do with each other, fyi
+    if id == reddit_buf.selected_mark_id or details.end_row == pos[1] then
+        return
+    end
+
+    if reddit_buf.selected_mark_id ~= nil then
+        local selectedmark = vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true })
+        vim.api.nvim_buf_set_extmark(reddit_buf.buffer, tns, selectedmark[1], selectedmark[2], {
+            id = reddit_buf.selected_mark_id,
+            end_col = selectedmark[3].end_col,
+            end_row = selectedmark[3].end_row
+        })
+    end
+
+    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, tns, row, col, {
+        id = id,
+        hl_group = "RedditSelected",
+        hl_eol = true,
+        priority = 50,
+        end_col = details.end_col,
+        end_row = details.end_row
+    })
+    reddit_buf.selected_mark_id = id
 end
 
 return M

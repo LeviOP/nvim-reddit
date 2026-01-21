@@ -18,6 +18,7 @@ todo:
 - standardize variable/parameter names to make understanding offsets (0 or 1 based, column or byte based, abstract or direct data, etc.)
 - maybe indicate when `more` children returned nothing
 - clean up expando rendering (unified image resolution picking and rendering)
+- provide way to show inline images in post body
 - maybe make foldtext children the number of decedents instead of direct children (like official reddit ui)
 - only show link with sticked text on subreddit
 - figure out why virtual padding sometimes isn't displayed until a redraw (probably image.nvim's fault)

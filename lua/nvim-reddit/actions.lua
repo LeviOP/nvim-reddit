@@ -54,10 +54,7 @@ local function vote(thing, reddit_buf, dir)
     if image then
         -- we have to wait until the text above is rendered so that the marks are "settled"
         vim.schedule(function()
-            image:render({
-                y = details.end_row - 1,
-                x = config.spacing.score_margin + 1
-            })
+            image:render()
         end)
     end
 
@@ -227,12 +224,12 @@ local function gallery_nav(thing, reddit_buf, dir)
         buffer = reddit_buf.buffer,
         window = vim.api.nvim_get_current_win(),
         with_virtual_padding = true,
-        height = 20,
     })
     if image == nil then
         print("image was nil?!?!")
         return
     end
+    expand.watch_image_extmark(image)
 
     local margin = config.spacing.score_margin + 1
 
@@ -261,19 +258,6 @@ local function gallery_nav(thing, reddit_buf, dir)
         y = thing_mark_end,
         x = margin,
     })
-
-    local image_id = image.extmark.id
-    local image_ns = image.global_state.extmarks_namespace
-
-    local row, col, details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, image_ns, image_id, { details = true }))
-    details.ns_id = nil
-    details.id = image_id
-    for _, virt_line in ipairs(details.virt_lines) do
-        virt_line[1][1] = (" "):rep(500)
-        virt_line[1][2] = "RedditExpanded"
-    end
-
-    vim.api.nvim_buf_set_extmark(reddit_buf.buffer, image_ns, row, col, details)
 
     if media.e == "AnimatedImage" and config.use_gif_player then
         ---@type string[]
