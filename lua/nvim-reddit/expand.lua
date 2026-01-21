@@ -72,19 +72,17 @@ end
 ---@param thing_mark_start integer
 ---@param thing_mark_end integer
 function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
-    ---@type string[]
-    local lines = {}
-    ---@type NvimReddit.Mark[]
-    local marks = {}
-    local line = 0
-    local hint = thing.data.post_hint
     if not thing.open then
         vim.async.run(function()
-            if config.set_topline_on_expand then
-                vim.fn.winrestview({ topline = thing_mark_start + 1 })
-            end
+            ---@type string[]
+            local lines = {}
+            ---@type NvimReddit.Mark[]
+            local marks = {}
+            local line = 0
+            local hint = thing.data.post_hint
 
             local margin = config.spacing.score_margin + 1
+
             if hint then
                 if hint == "image" then
                     if not reddit_buf.images[thing.data.id] then
@@ -258,6 +256,10 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                 priority = 50,
             })
 
+            if config.set_topline_on_expand then
+                vim.fn.winrestview({ topline = thing_mark_start + 1 })
+            end
+
             thing.open = true
         end):wait()
     else -- closing
@@ -328,7 +330,7 @@ function M.get_best_image_resolution_url(preview)
             best_dist = dist
         end
     end
-    print("window.height", window.height, "percentage", (config.max_image_height_window_percentage / 100), "max rows:", max_rows, "max height:", max_height, "best height:", best[height_key])
+    -- print("window.height", window.height, "percentage", (config.max_image_height_window_percentage / 100), "max rows:", max_rows, "max height:", max_height, "best height:", best[height_key])
 
     -- HACK: gifs don't have a url field in their source (only "gif" and "mp4"),
     -- but that seems to always mean they have one preview with a thumbnail url

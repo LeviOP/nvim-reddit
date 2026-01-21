@@ -15,6 +15,7 @@ todo:
 - handle duplicate buffers
   - maybe allow reloading?
 - support contest mode
+- maybe fix ueberzug image render failing directly after resizing terminal window
 - standardize variable/parameter names to make understanding offsets (0 or 1 based, column or byte based, abstract or direct data, etc.)
 - maybe indicate when `more` children returned nothing
 - provide way to show inline images in post body
