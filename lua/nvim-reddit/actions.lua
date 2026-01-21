@@ -203,26 +203,7 @@ local function gallery_nav(thing, reddit_buf, dir)
         return
     end
 
-    local url
-    ---@type NvimReddit.MediaPreview
-    local best = { u = "", x = 0, y = 0 }
-    for _, res in ipairs(media.p) do
-        if res.y > best.y and (best.y == 0 or res.y <= 480) then
-            best = res
-        end
-    end
-    if best.y >= 400 then
-        url = best.u
-    else
-        if media.e == "Image" then
-            url = media.s.u
-        elseif media.e == "AnimatedImage" then
-            url = media.s.gif
-        else
-            print("Unhandled gallery type:", media.e)
-            return
-        end
-    end
+    local url = expand.get_best_image_resolution_url(media)
 
     ---@type Image|nil
     ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart

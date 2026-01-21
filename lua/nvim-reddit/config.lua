@@ -15,6 +15,7 @@
 ---@field icons boolean
 ---@field refresh_lualine boolean
 ---@field set_topline_on_expand boolean
+---@field max_image_height_window_percentage integer
 local M = {}
 
 ---@alias NvimReddit.Keymap { [1]: string, [2]: string, [3]: fun(thing: NvimReddit.Selectable, reddit_buf: NvimReddit.Buffer) }
@@ -154,6 +155,7 @@ function M.defaults()
         icons = true,
         refresh_lualine = false,
         set_topline_on_expand = true,
+        max_image_height_window_percentage = 50,
     }
     return defaults
 end

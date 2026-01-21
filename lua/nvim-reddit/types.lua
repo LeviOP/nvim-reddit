@@ -256,9 +256,9 @@
 
 ---@class (exact) NvimReddit.PreviewImage
 ---@field id string
----@field source NvimReddit.PreviewImageSource
+---@field source NvimReddit.PreviewImageResolution
 ---@field variants NvimReddit.PreviewVariants
----@field resolutions NvimReddit.PreviewImageSource[]
+---@field resolutions NvimReddit.PreviewImageResolution[]
 
 ---@class (exact) NvimReddit.PreviewVariants
 ---@field obfuscated? NvimReddit.PreviewVariant
@@ -267,10 +267,10 @@
 ---@field mp4? NvimReddit.PreviewVariant
 
 ---@class (exact) NvimReddit.PreviewVariant
----@field source NvimReddit.PreviewImageSource
----@field reseolutions NvimReddit.PreviewImageSource[]
+---@field source NvimReddit.PreviewImageResolution
+---@field reseolutions NvimReddit.PreviewImageResolution[]
 
----@class (exact) NvimReddit.PreviewImageSource
+---@class (exact) NvimReddit.PreviewImageResolution
 ---@field url string
 ---@field width number
 ---@field height number

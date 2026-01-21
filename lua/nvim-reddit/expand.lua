@@ -19,26 +19,7 @@ function M.comment(thing, reddit_buf, thing_mark_start)
         vim.async.run(function()
             if not reddit_buf.images[thing.data.id] then
                 local media = thing.media.media
-                local url
-                ---@type NvimReddit.MediaPreview
-                local best = { u = "", x = 0, y = 0 }
-                for _, res in ipairs(media.p) do
-                    if res.y > best.y and (best.y == 0 or res.y <= 480) then
-                        best = res
-                    end
-                end
-                if best.y >= 400 then
-                    url = best.u
-                else
-                    if media.e == "Image" then
-                        url = media.s.u
-                    elseif media.e == "AnimatedImage" then
-                        url = media.s.gif
-                    else
-                        print("Unhandled gallery type:", media.e)
-                        return
-                    end
-                end
+                local url = M.get_best_image_resolution_url(media)
 
                 if media.e == "AnimatedImage" and config.use_gif_player then
                     ---@type string[]
@@ -54,8 +35,7 @@ function M.comment(thing, reddit_buf, thing_mark_start)
                 local image = vim.async.await(3, image_api.from_url, url, {
                     buffer = reddit_buf.buffer,
                     window = vim.api.nvim_get_current_win(),
-                    with_virtual_padding = true,
-                    height = 20,
+                    with_virtual_padding = true
                 })
                 if image == nil then
                     print("image was nil?!?!")
@@ -98,7 +78,6 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
     local marks = {}
     local line = 0
     local hint = thing.data.post_hint
-    vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
     if not thing.open then
         vim.async.run(function()
             if config.set_topline_on_expand then
@@ -112,24 +91,17 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                         local url
                         if thing.data.preview then
                             if #thing.data.preview.images ~= 1 then
-                                print("More thanone preview.images?", #thing.data.preview.images)
+                                print("More than one preview.images?", #thing.data.preview.images)
                             end
-                            local image = thing.data.preview.images[1]
-                            ---@type NvimReddit.PreviewImageSource
-                            local best = { url = "", width = 0, height = 0 }
-                            for _, res in ipairs(image.resolutions) do
-                                if res.height > best.height and (best.height == 0 or res.height <= 480) then
-                                    best = res
-                                end
-                            end
-                            url = best.url
+                            local preview = thing.data.preview.images[1]
+                            url = M.get_best_image_resolution_url(preview)
 
                             if config.use_gif_player then
                                 local player_url
-                                if image.variants.mp4 then
-                                    player_url = image.variants.mp4.source.url
-                                elseif image.variants.gif then
-                                    player_url = image.variants.gif.source.url
+                                if preview.variants.mp4 then
+                                    player_url = preview.variants.mp4.source.url
+                                elseif preview.variants.gif then
+                                    player_url = preview.variants.gif.source.url
                                 end
                                 if player_url then
                                     ---@type string[]
@@ -158,6 +130,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                             goto exit
                         end
                         M.watch_image_extmark(image)
+                        -- image.ignore_global_max_size = true
 
                         reddit_buf.images[thing.data.id] = image
                     end
@@ -188,26 +161,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                         return
                     end
 
-                    local url
-                    ---@type NvimReddit.MediaPreview
-                    local best = { u = "", x = 0, y = 0 }
-                    for _, res in ipairs(media.p) do
-                        if res.y > best.y and (best.y == 0 or res.y <= 480) then
-                            best = res
-                        end
-                    end
-                    if best.y >= 400 then
-                        url = best.u
-                    else
-                        if media.e == "Image" then
-                            url = media.s.u
-                        elseif media.e == "AnimatedImage" then
-                            url = media.s.gif
-                        else
-                            print("Unhandled gallery type:", media.e)
-                            return
-                        end
-                    end
+                    local url = M.get_best_image_resolution_url(media)
 
                     if media.e == "AnimatedImage" and config.use_gif_player then
                         ---@type string[]
@@ -231,6 +185,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                         goto exit
                     end
                     M.watch_image_extmark(image)
+                    -- image.ignore_global_max_size = true
 
                     reddit_buf.images[thing.data.id] = image
                 end
@@ -284,12 +239,16 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                 foldlevels[i] = 0
             end
 
+            vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
+
             util.draw(reddit_buf, lines, marks, {}, foldlevels, thing_mark_end, thing_mark_end)
 
             local image = reddit_buf.images[thing.data.id]
             if image then
                 image:render()
             end
+
+            vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
 
             thing.expando_mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end, 0, {
                 id = thing.expando_mark,
@@ -306,6 +265,9 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
             thing.player_job:kill("sigterm")
             thing.player_job = nil
         end
+
+        vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
+
         local image = reddit_buf.images[thing.data.id]
         if image then
             image:clear()
@@ -325,9 +287,52 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                 vim.api.nvim_win_set_cursor(0, { row, cursor[2] })
             end
         end
+
+        vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+
         thing.open = false
     end
-    vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+end
+
+local image_utils = require("reddit-image.utils")
+
+--TODO: Make this generic (almost added to luals :D)
+---@param preview NvimReddit.PreviewImage|NvimReddit.Media
+---@return string
+function M.get_best_image_resolution_url(preview)
+    local term_size = image_utils.term.get_size()
+    local window = image_utils.window.get_window(vim.api.nvim_get_current_win()) or { height = term_size.screen_rows }
+
+    local max_rows = math.floor(window.height * (config.max_image_height_window_percentage / 100))
+    local max_height = term_size.cell_height * max_rows
+
+    local source_key, resolutions_key, height_key, url_key
+    if preview.e then
+        source_key = "s"
+        resolutions_key = "p"
+        height_key = "y"
+        url_key = "u"
+    else
+        source_key = "source"
+        resolutions_key = "resolutions"
+        height_key = "height"
+        url_key = "url"
+    end
+
+    local best = preview[source_key]
+    local best_dist = math.abs(preview[source_key][height_key] - max_height)
+    for _, res in ipairs(preview[resolutions_key]) do
+        local dist = math.abs(max_height - res[height_key])
+        if dist < best_dist then
+            best = res
+            best_dist = dist
+        end
+    end
+    print("window.height", window.height, "percentage", (config.max_image_height_window_percentage / 100), "max rows:", max_rows, "max height:", max_height, "best height:", best[height_key])
+
+    -- HACK: gifs don't have a url field in their source (only "gif" and "mp4"),
+    -- but that seems to always mean they have one preview with a thumbnail url
+    return best[url_key] or preview[resolutions_key][1][url_key]
 end
 
 ---@param image Image
