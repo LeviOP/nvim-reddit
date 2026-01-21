@@ -21,7 +21,6 @@ todo:
 - provide way to show inline images in post body
 - maybe make foldtext children the number of decedents instead of direct children (like official reddit ui)
 - only show link with sticked text on subreddit
-- figure out why virtual padding sometimes isn't displayed until a redraw (probably image.nvim's fault)
 - handle buffer being open in multiple windows
 - use style linter
 - handle score digit count being higher than score margin

@@ -25,6 +25,16 @@ local function vote(thing, reddit_buf, dir)
         end
     end)
 
+    local geometry
+    local image = reddit_buf.images[thing.data.id]
+    if image then
+        geometry = {
+            y = image.extmark.row,
+            x = image.extmark.col
+        }
+        image:clear()
+    end
+
     local row, _, details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true }))
     local thing_lines, thing_style_marks, thing_marks
     if thing.kind == "t1" then
@@ -50,12 +60,8 @@ local function vote(thing, reddit_buf, dir)
         end_col = 0
     })
 
-    local image = reddit_buf.images[thing.data.id]
     if image then
-        -- we have to wait until the text above is rendered so that the marks are "settled"
-        vim.schedule(function()
-            image:render()
-        end)
+        image:render(geometry)
     end
 
     -- HACK: writing over existing text causes the folds after the current line to break for...
