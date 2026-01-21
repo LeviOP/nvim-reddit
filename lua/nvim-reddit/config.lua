@@ -138,7 +138,7 @@ function M.defaults()
             max_line_length = 120
         },
         use_gif_player = true,
-        player_options = {"mpv", "--keep-open=yes", "--loop=inf", "--x11-name=mpv-float"},
+        player_options = {"mpv", "--keep-open=yes", "--loop=inf", "--af=loudnorm=I=-16:LRA=11:TP=-1.5", "--x11-name=mpv-float"},
         gif_player_options = {"mpv", "--keep-open=yes", "--loop=inf", "--x11-name=mpv-gif-float"},
         player_onexit = function (out)
             -- mpv uses exit code 4 when quit due to a signal (which is how we kill it if closing expando)
