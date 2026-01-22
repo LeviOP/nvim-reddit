@@ -15,7 +15,8 @@ todo:
 - handle duplicate buffers
   - maybe allow reloading?
 - support contest mode
-- maybe fix ueberzug image render failing directly after resizing terminal window
+- maybe cache blocks for comments and links (instead of just expando content)
+- maybe address ueberzug image render failing directly after resizing terminal window
 - standardize variable/parameter names to make understanding offsets (0 or 1 based, column or byte based, abstract or direct data, etc.)
 - maybe indicate when `more` children returned nothing
 - provide way to show inline images in post body
@@ -28,11 +29,9 @@ todo:
 - maybe make separate wrapped type for state stored on things to reduce confusion
 - handle nsfw/spoiler links
 - support replying (and posting)
-- collapse richtext rendering with state table
+- fix some issues with richtext rendering
   - apparently if some markup ends on the word after a newline the markup isn't applied to the line before
   - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)
-  - handle case when single line that is supposed to wrap adds blank line
-  - comment the code better?? i have no idea what's going on in there at this point
 - indicate whether link is expandable
 - maybe render directly instead of rendering text and shifting it around (luajit is very fast :)
 - maybe optimize all table accesses / insertions (it's already super fast though)
