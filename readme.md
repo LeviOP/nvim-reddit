@@ -15,6 +15,7 @@ todo:
 - handle duplicate buffers
   - maybe allow reloading?
 - support contest mode
+- support gallery urls / captions
 - visibly indicate when post is archived
 - maybe cache blocks for comments and links (instead of just expando content)
 - maybe address ueberzug image render failing directly after resizing terminal window

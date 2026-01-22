@@ -258,10 +258,9 @@ function M.render(richtext, width)
             local word_carry_count = #state.word_carry
             if word_carry_count ~= 0 then
                 if segment.type == "br" then
-                    -- theoretically, a line break will never have whitespace before it, meaning when
-                    -- it occurs, there will always be a carry. we need to force this carry onto the
-                    -- current line (or wrap it) and then force a line break
-
+                    -- there was a line break, but it was directly after some text, meaning there was
+                    -- a carry. we need to force this carry onto the current line (or wrap it) and
+                    -- then force a line break
                     local carry_words = ""
                     for _, carry in ipairs(state.word_carry) do
                         carry_words = carry_words .. carry.word
@@ -289,34 +288,50 @@ function M.render(richtext, width)
                     table.insert(state.word_carry[word_carry_count].commands, segment)
                 end
             else
-                -- we are at a command but there is no carry. usually happens when commands start
-                -- at the start of words that had spaces before them
-                if segment.opening then
-                    table.insert(state.open, {
-                        type = segment.type,
-                        extra = segment.extra,
-                        line = state.line,
-                        col = state.current_bytes + (state.current_bytes == 0 and 0 or 1)
-                    })
+                -- we are at a command but there is no carry. usually happens when commands start at
+                -- (or end before) the start of words that had spaces before them
+                if segment.type == "br" then
+                    -- there was a line break, but it occurred after some whitespace (sometimes multi-
+                    -- line code blocks (that are not pre) can have a newline before their end, which
+                    -- is converted to whitespace as part of html handling)
+
+                    -- we can safely just add the new line because we know there is no carry.
+                    state.lines[state.line + 1] = state.current
+                    state.line = state.line + 1
+
+                    -- then we can add marks for currently open stuff
+                    insert_line_marks(state)
+
+                    state.current = ""
+                    state.current_bytes = 0
                 else
-                    for i, o in ipairs(state.open) do
-                        if o.type == segment.type then
-                            table.remove(state.open, i)
-                            -- if there is no carry and there is no line, why are we inserting a mark?
-                            -- (this happens when there are lines in the html with no render. for example,
-                            -- if you create insert [](#bot) into your markdown, it will create an empty
-                            -- anchor in an empty paragraph with no height. we don't need to render that)
-                            if state.current_bytes == 0 then
+                    if segment.opening then
+                        table.insert(state.open, {
+                            type = segment.type,
+                            extra = segment.extra,
+                            line = state.line,
+                            col = state.current_bytes + (state.current_bytes == 0 and 0 or 1)
+                        })
+                    else
+                        for i, o in ipairs(state.open) do
+                            if o.type == segment.type then
+                                table.remove(state.open, i)
+                                -- if there is no carry and there is no line, why are we inserting a mark?
+                                -- (this happens when there are lines in the html with no render. for example,
+                                -- if you create insert [](#bot) into your markdown, it will create an empty
+                                -- anchor in an empty paragraph with no height. we don't need to render that)
+                                if state.current_bytes == 0 then
+                                    break
+                                end
+                                local details = inline_to_details(o.type, o.extra)
+                                table.insert(state.marks, {
+                                    details = details,
+                                    line = o.line,
+                                    start_col = o.col,
+                                    end_col = state.current_bytes
+                                })
                                 break
                             end
-                            local details = inline_to_details(o.type, o.extra)
-                            table.insert(state.marks, {
-                                details = details,
-                                line = o.line,
-                                start_col = o.col,
-                                end_col = state.current_bytes
-                            })
-                            break
                         end
                     end
                 end
