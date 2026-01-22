@@ -17,6 +17,7 @@ todo:
 - support contest mode
 - support gallery urls / captions
 - visibly indicate when post is archived
+- make sure bottom of thing is visible in post mode (when "scrolling" down)
 - maybe cache blocks for comments and links (instead of just expando content)
 - maybe address ueberzug image render failing directly after resizing terminal window
 - standardize variable/parameter names to make understanding offsets (0 or 1 based, column or byte based, abstract or direct data, etc.)

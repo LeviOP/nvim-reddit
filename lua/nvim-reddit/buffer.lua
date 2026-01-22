@@ -217,7 +217,7 @@ function M.open(path)
                     end
                     url = url:sub(1, -2)
                     M.open(url)
-                end)
+                end):raise_on_error()
             end
             vim.keymap.set("n", "gln", function()
                 listing_nav("after")

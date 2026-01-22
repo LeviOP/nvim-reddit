@@ -55,7 +55,7 @@ function M.comment(thing, reddit_buf, thing_mark_start)
             })
 
             thing.open = true
-        end):wait()
+        end):raise_on_error()
     else
         if thing.player_job then
             thing.player_job:kill("sigterm")
@@ -261,7 +261,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
             end
 
             thing.open = true
-        end):wait()
+        end):raise_on_error()
     else -- closing
         if thing.player_job then
             thing.player_job:kill("sigterm")

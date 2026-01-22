@@ -122,11 +122,11 @@ function M.open_comments(thing)
     if thing.kind == "t3" then
         vim.async.run(function()
             buffer.open(thing.data.permalink:sub(2))
-        end):wait()
+        end):raise_on_error()
     elseif thing.kind == "t1" and thing.data.link_permalink then
         vim.async.run(function()
             buffer.open(thing.data.link_permalink:gsub("^https://www.reddit.com/", ""))
-        end):wait()
+        end):raise_on_error()
     else
         print("not a link")
     end
@@ -161,7 +161,7 @@ function M.open_subreddit(thing)
     end
     vim.async.run(function()
         buffer.open(thing.data.subreddit_name_prefixed)
-    end):wait()
+    end):raise_on_error()
 end
 
 ---@param thing NvimReddit.Selectable
@@ -175,7 +175,7 @@ function M.open_user(thing)
     end
     vim.async.run(function()
         buffer.open("user/" .. thing.data.author)
-    end):wait()
+    end):raise_on_error()
 end
 
 ---@param thing NvimReddit.Selectable
@@ -264,7 +264,7 @@ end
 function M.gallery_next(thing, reddit_buf)
     vim.async.run(function()
         gallery_nav(thing, reddit_buf, 1)
-    end):wait()
+    end):raise_on_error()
 end
 
 ---@param thing NvimReddit.Selectable
@@ -272,7 +272,7 @@ end
 function M.gallery_prev(thing, reddit_buf)
     vim.async.run(function()
         gallery_nav(thing, reddit_buf, -1)
-    end):wait()
+    end):raise_on_error()
 end
 
 ---@param thing NvimReddit.Selectable
@@ -283,7 +283,7 @@ function M.open_domain(thing)
     end
     vim.async.run(function()
         buffer.open(thing.domain_url)
-    end):wait()
+    end):raise_on_error()
 end
 
 ---@param thing NvimReddit.Selectable
@@ -304,7 +304,7 @@ function M.open_context(thing)
     end
     vim.async.run(function()
         buffer.open(thing.data.permalink:sub(2) .. "?context=3")
-    end):wait()
+    end):raise_on_error()
 end
 
 ---@param thing NvimReddit.Selectable
@@ -315,7 +315,7 @@ function M.open_full_context(thing)
     end
     vim.async.run(function()
         buffer.open(thing.data.permalink:sub(2) .. "?context=10000")
-    end):wait()
+    end):raise_on_error()
 end
 
 ---@param more NvimReddit.More
@@ -447,7 +447,7 @@ local function load_more(more, reddit_buf)
             util.draw(reddit_buf, lines, marks, things, foldlevels, start_line, end_line)
             vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
         end)
-    end):wait()
+    end):raise_on_error()
 end
 
 ---@param thing NvimReddit.Selectable
@@ -457,7 +457,7 @@ function M.enter(thing, reddit_buf)
         if thing.data.count == 0 then
             vim.async.run(function()
                 buffer.open(thing.parent.data.permalink:sub(2))
-            end):wait()
+            end):raise_on_error()
         else
             load_more(thing, reddit_buf)
         end
