@@ -378,11 +378,12 @@ end
 ---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
 function M.link(thing)
     local link = thing.data
+    local show_arrows = (not link.archived) or (link.likes ~= vim.NIL)
     ---@type NvimReddit.Line[]
     local lines = {
         {
             {
-                "󰜷",
+                show_arrows and "󰜷" or " ",
                 padding = config.spacing.score_margin,
                 marks = {{ hl_group = { "RedditUpvoted", condition = link.likes == true } }},
             },
@@ -452,7 +453,7 @@ function M.link(thing)
         },
         {
             {
-                "󰜮",
+                show_arrows and "󰜮" or " ",
                 padding = config.spacing.score_margin,
                 marks = {{ hl_group = { "RedditDownvoted", condition = link.likes == false } }}
             },
@@ -494,6 +495,7 @@ function M.comment(thing, render_children)
             thing.time_ago_edited = "(last edited " .. util.time_ago(comment.edited) .. ")"
         end
     end
+    local show_arrows = (not comment.archived) or (comment.likes ~= vim.NIL)
     ---@type NvimReddit.Line[]
     local lines = {
         {
@@ -503,7 +505,7 @@ function M.comment(thing, render_children)
                 condition = thing.padding ~= 0,
             },
             {
-                "󰜷",
+                show_arrows and "󰜷" or " ",
                 marks = {{ hl_group = { "RedditUpvoted", condition = comment.likes == true } }},
             },
             {
@@ -557,7 +559,7 @@ function M.comment(thing, render_children)
                 condition = thing.padding ~= 0,
             },
             {
-                "󰜮",
+                show_arrows and "󰜮" or " ",
                 marks = {{ hl_group = { "RedditDownvoted", condition = comment.likes == false } }}
             },
             { comment.body_html, mdhtml = true, hl_group = comment.removal_reason == "legal" and "RedditAdminTakedown" or nil },

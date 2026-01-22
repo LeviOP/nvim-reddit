@@ -15,6 +15,7 @@ todo:
 - handle duplicate buffers
   - maybe allow reloading?
 - support contest mode
+- visibly indicate when post is archived
 - maybe cache blocks for comments and links (instead of just expando content)
 - maybe address ueberzug image render failing directly after resizing terminal window
 - standardize variable/parameter names to make understanding offsets (0 or 1 based, column or byte based, abstract or direct data, etc.)

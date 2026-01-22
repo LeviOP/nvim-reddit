@@ -19,6 +19,10 @@ local M = {}
 ---@param reddit_buf NvimReddit.Buffer
 ---@param dir 1|0|-1
 local function vote(thing, reddit_buf, dir)
+    if thing.data.archived then
+        print("You cannot vote on archived posts")
+        return
+    end
     state.reddit:vote(thing.data.name, dir, function(err)
         if err then
             print("Error voting: " .. err)
