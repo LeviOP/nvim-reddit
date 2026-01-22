@@ -243,7 +243,7 @@ local function get_conditional(value)
         else
             return tostring(cond_value), true
         end
-        --- this is just wrong?? we return on all types of the parameter
+        -- this is just wrong?? we return on all types of the parameter
     end ---@diagnostic disable-line: missing-return
 end
 
@@ -392,12 +392,14 @@ function M.link(thing)
     local link_flair_text = link.link_flair_text
     local link_flair_foreground, link_flair_background
     if link_flair_text ~= vim.NIL then ---@cast link_flair_text -vim.NIL
+        link_flair_text = link_flair_text:gsub("%s+$", "")
         link_flair_foreground, link_flair_background = get_flair_hl(link.subreddit, link_flair_text, link.link_flair_text_color, link.link_flair_background_color)
     end
 
     local author_flair_text = link.author_flair_text
     local author_flair_foreground, author_flair_background
     if author_flair_text ~= vim.NIL then ---@cast author_flair_text -vim.NIL
+        author_flair_text = author_flair_text:gsub("%s+$", "")
         author_flair_foreground, author_flair_background = get_flair_hl(link.subreddit, author_flair_text, link.author_flair_text_color, link.author_flair_background_color)
     end
 
@@ -535,6 +537,7 @@ function M.comment(thing, render_children)
     local author_flair_text = comment.author_flair_text
     local author_flair_foreground, author_flair_background
     if author_flair_text ~= vim.NIL then ---@cast author_flair_text -vim.NIL
+        author_flair_text = author_flair_text:gsub("%s+$", "")
         author_flair_foreground, author_flair_background = get_flair_hl(comment.subreddit, author_flair_text, comment.author_flair_text_color, comment.author_flair_background_color)
     end
 

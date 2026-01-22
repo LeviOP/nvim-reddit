@@ -24,6 +24,7 @@
 - support contest mode
 - support gallery urls / captions
 - visibly indicate when post is archived
+- visibly indicate when post is locked
 - fix some issues with richtext rendering
   - apparently if some markup ends on the word after a newline the markup isn't applied to the line before
   - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)
