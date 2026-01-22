@@ -74,8 +74,12 @@ function M.jump(buffer, dir)
         -- if we close the last thing, the offset of the new thing is going to be different, so we update it
         closest_row = thing_mark_start
 
-        if not thing.open then
-            expand.link(new_thing, reddit_buf, thing_mark_start, thing_details.end_row)
+        vim.fn.winrestview({ topline = thing_mark_start + 1 })
+
+        if not new_thing.open then
+            vim.schedule(function()
+                expand.link(new_thing, reddit_buf, thing_mark_start, thing_details.end_row)
+            end)
         end
 
         ::bail::
