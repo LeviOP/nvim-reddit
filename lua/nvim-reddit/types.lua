@@ -82,7 +82,7 @@
 ---@field treatment_tags any[]
 ---@field banned_by null
 ---@field mod_note null
----@field link_flair_text_color NvimReddit.FlairTextColor | null
+---@field link_flair_text_color NvimReddit.FlairTextColor
 ---@field mod_reports any[]
 ---@field allow_live_comments boolean
 ---@field subreddit_subscribers number
@@ -156,7 +156,7 @@
 ---@field is_created_from_ads_ui boolean
 ---@field id string
 ---@field is_robot_indexable boolean
----@field link_flair_background_color string
+---@field link_flair_background_color string | null
 ---@field wls number
 ---@field downs number
 ---@field thumbnail_height integer | null
@@ -337,7 +337,7 @@
 ---@field created_utc number
 ---@field ups number
 ---@field id string
----@field author_flair_text_color? string
+---@field author_flair_text_color NvimReddit.FlairTextColor | null
 ---@field stickied boolean
 ---@field author_flair_type string
 ---@field archived boolean

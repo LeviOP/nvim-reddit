@@ -39,6 +39,8 @@ todo:
 - maybe optimize all table accesses / insertions (it's already super fast though)
 - maybe show thumbnails? (probably not)
 - maybe show comment depth / parenting with background color change or "tree lines"
+- maybe don't show flairs on user pages (like official reddit ui does)
+- maybe show flairs on the correct side of the post title (requires getting /about/ of subreddit)
 - add "hovers" for various stuff
 - support mouse
 - maybe handle custom emojis

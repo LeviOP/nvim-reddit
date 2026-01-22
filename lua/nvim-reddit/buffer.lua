@@ -126,7 +126,7 @@ function M.open(path)
             else
                 link.domain_url = "domain/" .. link.data.domain
             end
-            link.show_subreddit = endpoint.subreddit ~= link.data.subreddit
+            link.show_subreddit = endpoint.subreddit ~= link.data.subreddit:lower()
 
             local lines, marks, things, foldlevels = render.link(link)
             table.insert(lines, "")

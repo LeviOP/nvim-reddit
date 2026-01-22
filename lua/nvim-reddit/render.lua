@@ -194,20 +194,28 @@ function M.blocks(blocks, width)
 end
 
 local flair_hls = {}
-local function get_flair_hl(subreddit, flair_id, bg_color)
+---@param subreddit string
+---@param flair_id string
+---@param text_color NvimReddit.FlairTextColor | vim.NIL
+---@param background_color string | vim.NIL
+---@return string, string
+local function get_flair_hl(subreddit, flair_id, text_color, background_color)
     flair_id = subreddit .. flair_id
-    if bg_color == vim.NIL or bg_color == "transparent" then
-        return "RedditFlair"
-    end
+    if background_color == vim.NIL or background_color == "transparent" or background_color == "" then
+        -- FIXME: we swap these because the default text flair is dark.. but on the official reddit
+        -- ui the default flair background is white, so the dark text actually makes sense
+        return "RedditFlairLightText", "RedditFlair"
+    end ---@cast background_color -vim.NIL
+    local text_hl = text_color == "light" and "RedditFlairLightText" or "RedditFlairDarkText"
     if flair_id == vim.NIL then print("THIS IS A FAIL") end
     if flair_hls[flair_id] then
-        return flair_hls[flair_id]
+        return text_hl, flair_hls[flair_id]
     end
 
     local hl_name = "RedditFlair_" .. flair_id:gsub("%W", "_")
-    vim.api.nvim_set_hl(0, hl_name, { fg = bg_color, bg = "#000000" })
+    vim.api.nvim_set_hl(0, hl_name, { bg = background_color })
     flair_hls[flair_id] = hl_name
-    return hl_name
+    return text_hl, hl_name
 end
 
 ---@alias LineValue string|number|fun(): string
@@ -378,7 +386,21 @@ end
 ---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
 function M.link(thing)
     local link = thing.data
+
     local show_arrows = (not link.archived) or (link.likes ~= vim.NIL)
+
+    local link_flair_text = link.link_flair_text
+    local link_flair_foreground, link_flair_background
+    if link_flair_text ~= vim.NIL then ---@cast link_flair_text -vim.NIL
+        link_flair_foreground, link_flair_background = get_flair_hl(link.subreddit, link_flair_text, link.link_flair_text_color, link.link_flair_background_color)
+    end
+
+    local author_flair_text = link.author_flair_text
+    local author_flair_foreground, author_flair_background
+    if author_flair_text ~= vim.NIL then ---@cast author_flair_text -vim.NIL
+        author_flair_foreground, author_flair_background = get_flair_hl(link.subreddit, author_flair_text, link.author_flair_text_color, link.author_flair_background_color)
+    end
+
     ---@type NvimReddit.Line[]
     local lines = {
         {
@@ -388,9 +410,12 @@ function M.link(thing)
                 marks = {{ hl_group = { "RedditUpvoted", condition = link.likes == true } }},
             },
             {
-                link.link_flair_text --[[@as string]],
-                condition = link.link_flair_text ~= vim.NIL,
-                marks = {{ hl_group = util.closure(get_flair_hl, link.subreddit, link.link_flair_text, link.link_flair_background_color) }}
+                link_flair_text --[[@as string]],
+                condition = link_flair_text ~= vim.NIL,
+                marks = {
+                    { hl_group = link_flair_foreground },
+                    { hl_group = link_flair_background },
+                },
             },
             {
                 "",
@@ -428,6 +453,14 @@ function M.link(thing)
                     { hl_group = { "RedditModerator", condition = link.distinguished == "moderator" } },
                     { hl_group = { "RedditAdmin", condition = link.distinguished == "admin" } },
                 },
+            },
+            {
+                author_flair_text--[[@as string]],
+                marks = {
+                    { hl_group = author_flair_foreground },
+                    { hl_group = author_flair_background },
+                },
+                condition = (not thing.show_subreddit) and author_flair_text ~= vim.NIL,
             },
             {
                 "to",
@@ -488,6 +521,7 @@ end
 ---@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
 function M.comment(thing, render_children)
     local comment = thing.data
+
     if not thing.time_ago then
         thing.time_ago = util.time_ago(comment.created)
         if comment.edited ~= false then
@@ -495,7 +529,15 @@ function M.comment(thing, render_children)
             thing.time_ago_edited = "(last edited " .. util.time_ago(comment.edited) .. ")"
         end
     end
+
     local show_arrows = (not comment.archived) or (comment.likes ~= vim.NIL)
+
+    local author_flair_text = comment.author_flair_text
+    local author_flair_foreground, author_flair_background
+    if author_flair_text ~= vim.NIL then ---@cast author_flair_text -vim.NIL
+        author_flair_foreground, author_flair_background = get_flair_hl(comment.subreddit, author_flair_text, comment.author_flair_text_color, comment.author_flair_background_color)
+    end
+
     ---@type NvimReddit.Line[]
     local lines = {
         {
@@ -519,9 +561,12 @@ function M.comment(thing, render_children)
                 },
             },
             {
-                function() return select(1, (comment.author_flair_text--[[@as string]]):gsub("%s+$", "")) end,
-                marks = {{ hl_group = "RedditFlair" }},
-                condition = comment.author_flair_text ~= vim.NIL,
+                author_flair_text--[[@as string]],
+                marks = {
+                    { hl_group = author_flair_foreground },
+                    { hl_group = author_flair_background },
+                },
+                condition = author_flair_text ~= vim.NIL,
             },
             {
                 comment.score .. " point" .. (comment.score == 1 and "" or "s"),

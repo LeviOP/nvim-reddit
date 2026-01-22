@@ -99,6 +99,14 @@ vim.api.nvim_set_hl(0, "RedditFlair", {
     background = "#000000"
 })
 
+vim.api.nvim_set_hl(0, "RedditFlairLightText", {
+    foreground = "#FFFFFF"
+})
+
+vim.api.nvim_set_hl(0, "RedditFlairDarkText", {
+    foreground = "#000000"
+})
+
 vim.api.nvim_set_hl(0, "RedditPoints", {
     bold = true,
 })
