@@ -4,6 +4,7 @@ local buffer = require("nvim-reddit.buffer")
 local config = require("nvim-reddit.config")
 local util = require("nvim-reddit.util")
 local expand = require("nvim-reddit.expand")
+local richtext = require("nvim-reddit.richtext")
 
 local ns = state.ns
 local tns = state.tns
@@ -199,6 +200,11 @@ local function gallery_nav(thing, reddit_buf, dir)
         return
     end
 
+    if thing.player_job then
+        thing.player_job:kill("sigterm")
+        thing.player_job = nil
+    end
+
     ---@type integer, _, vim.api.keyset.extmark_details
     local _, _, thing_mark_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true }))
     local thing_mark_end = thing_mark_details.end_row
@@ -235,21 +241,51 @@ local function gallery_nav(thing, reddit_buf, dir)
     expand.watch_image_extmark(image)
 
     local margin = config.spacing.score_margin + 1
+    local margin_string = (" "):rep(margin)
 
-    if thing.player_job then
-        thing.player_job:kill("sigterm")
-        thing.player_job = nil
+    local window_width = util.get_window_text_width(0)
+    local width = math.min(window_width, config.spacing.max_line_length) - margin
+
+    local lines = {margin_string .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items}
+
+    local item_line_count = 0
+    if item.caption then
+        local caption_lines = richtext.render({item.caption}, width)
+        for _, caption_line in ipairs(caption_lines) do
+            table.insert(lines, margin_string .. caption_line)
+        end
+        item_line_count = #caption_lines
     end
+    local url_line
+    if item.outbound_url then
+        table.insert(lines, margin_string .. item.outbound_url)
+        url_line = thing_mark_end + item_line_count + 1
+        item_line_count = item_line_count + 1
+    end
+
+    local item_line_diff = thing.gallery_item_line_count - item_line_count
 
     local row, _, expando_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, ns, thing.expando_mark, { details = true }))
 
     vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
-    vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end + 1, false, {(" "):rep(margin) .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items })
+    vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end + thing.gallery_item_line_count + 1, false, lines)
     vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+
+    if item.outbound_url then
+        vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, url_line, margin, {
+            hl_group = "RedditAnchor",
+            url = item.outbound_url,
+            end_col = margin + item.outbound_url:len(),
+            end_row = url_line,
+            priority = 200,
+        })
+    end
+
+    thing.gallery_item_line_count = item_line_count
 
     vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, row, 0, {
         id = thing.expando_mark,
-        end_row = expando_details.end_row,
+        end_row = expando_details.end_row - item_line_diff,
         hl_group = "RedditExpanded",
         hl_eol = true,
         priority = 50,

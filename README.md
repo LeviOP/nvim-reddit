@@ -21,7 +21,6 @@
 - handle nsfw/spoiler links
 - handle rich:video and similar
 - support contest mode
-- support gallery urls / captions
 - visibly indicate when post is archived
 - visibly indicate when post is locked
 - fix some issues with richtext rendering

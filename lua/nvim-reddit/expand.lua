@@ -3,6 +3,7 @@ local state = require("nvim-reddit.state")
 local util = require("nvim-reddit.util")
 local html = require("nvim-reddit.html")
 local render = require("nvim-reddit.render")
+local richtext = require("nvim-reddit.richtext")
 
 local ns = state.ns
 
@@ -74,6 +75,7 @@ end
 function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
     if not thing.open then
         vim.async.run(function()
+
             ---@type string[]
             local lines = {}
             ---@type NvimReddit.Mark[]
@@ -84,6 +86,9 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
             local hint = thing.data.post_hint
 
             local margin = config.spacing.score_margin + 1
+            local margin_string = (" "):rep(margin)
+            local window_width = util.get_window_text_width(0)
+            local width = math.min(window_width, config.spacing.max_line_length) - margin
 
             if hint then
                 if hint == "image" then
@@ -130,14 +135,13 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                             goto exit
                         end
                         M.watch_image_extmark(image)
-                        -- image.ignore_global_max_size = true
 
                         reddit_buf.images[thing.data.id] = image
                     end
 
                     ::exit::
                 elseif hint ~= "self" then
-                    table.insert(lines, (" "):rep(margin) .. "<" .. hint .. ">")
+                    table.insert(lines, margin_string .. "<" .. hint .. ">")
                     line = line + 1
                     if hint == "hosted:video" then
                         ---@type string[]
@@ -183,18 +187,42 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                         goto exit
                     end
                     M.watch_image_extmark(image)
-                    -- image.ignore_global_max_size = true
 
                     reddit_buf.images[thing.data.id] = image
                 end
 
-                table.insert(lines, (" "):rep(margin) .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items)
+                table.insert(lines, margin_string .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items)
                 line = line + 1
+
+                local item_lines = 0
+                if item.caption then
+                    local caption_lines = richtext.render({item.caption}, width)
+                    for _, caption_line in ipairs(caption_lines) do
+                        table.insert(lines, margin_string .. caption_line)
+                    end
+                    item_lines = #caption_lines
+                    line = line + item_lines
+                end
+                if item.outbound_url then
+                    table.insert(lines, margin_string .. item.outbound_url)
+                    table.insert(marks, {
+                        details = {
+                            hl_group = "RedditAnchor",
+                            url = item.outbound_url,
+                        },
+                        line = line,
+                        start_col = margin,
+                        end_col = margin + item.outbound_url:len(),
+                    })
+                    item_lines = item_lines + 1
+                    line = line + 1
+                end
+                thing.gallery_item_line_count = item_lines
 
                 ::exit::
             elseif thing.data.secure_media ~= vim.NIL then
                 if thing.data.secure_media.reddit_video then
-                    table.insert(lines, (" "):rep(margin) .. "<hosted:video>")
+                    table.insert(lines, margin_string .. "<hosted:video>")
                     line = line + 1
                     ---@type string[]
                     local player_args = {}
@@ -203,7 +231,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                     thing.player_job = vim.system(player_args, nil, config.player_onexit)
                 end
             elseif thing.data.crosspost_parent then
-                table.insert(lines, (" "):rep(margin) .. "<crosspost>")
+                table.insert(lines, margin_string .. "<crosspost>")
                 line = line + 1
             end
 
@@ -214,14 +242,12 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                     thing.parsed = blocks
                 end
 
-                local width = util.get_window_text_width(0)
-
-                local expando_lines, expando_marks, expando_spoilers = render.blocks(thing.parsed, math.min(width, config.spacing.max_line_length) - margin)
+                local expando_lines, expando_marks, expando_spoilers = render.blocks(thing.parsed, width)
                 for _, expando_line in ipairs(expando_lines) do
                     if expando_line == "" then
                         table.insert(lines, "")
                     else
-                        table.insert(lines, (" "):rep(margin) .. expando_line)
+                        table.insert(lines, margin_string .. expando_line)
                     end
                 end
 

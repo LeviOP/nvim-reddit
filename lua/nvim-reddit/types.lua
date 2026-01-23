@@ -40,6 +40,7 @@
 ---@field open boolean|nil
 ---@field domain_url string|nil
 ---@field gallery_selected integer|nil
+---@field gallery_item_line_count integer|nil
 ---@field player_job vim.SystemObj|nil
 ---@field mark integer|nil
 
@@ -184,6 +185,7 @@
 ---@field id integer
 ---@field media_id string
 ---@field caption? string
+---@field outbound_url? string
 
 ---@class (exact) NvimReddit.Gildings
 -- unknown
