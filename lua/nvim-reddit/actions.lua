@@ -7,6 +7,7 @@ local expand = require("nvim-reddit.expand")
 
 local ns = state.ns
 local tns = state.tns
+local sns = state.sns
 
 local image_api = require("reddit-image")
 
@@ -40,11 +41,11 @@ local function vote(thing, reddit_buf, dir)
     end
 
     local row, _, details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true }))
-    local thing_lines, thing_style_marks, thing_marks
+    local thing_lines, thing_style_marks, thing_spoilers, thing_marks
     if thing.kind == "t1" then
-        thing_lines, thing_style_marks, thing_marks = render.comment(thing, false)
+        thing_lines, thing_style_marks, thing_spoilers, thing_marks = render.comment(thing, false)
     elseif thing.kind == "t3" then
-        thing_lines, thing_style_marks, thing_marks = render.link(thing)
+        thing_lines, thing_style_marks, thing_spoilers, thing_marks = render.link(thing)
     end
 
     vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
@@ -53,6 +54,17 @@ local function vote(thing, reddit_buf, dir)
         style_mark.details.end_row = style_mark.line + row
         style_mark.details.end_col = style_mark.end_col
         vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, style_mark.line + row, style_mark.start_col, style_mark.details)
+    end
+    for _, spoiler in ipairs(thing_spoilers) do
+        spoiler.details.end_row = spoiler.line + row
+        spoiler.details.end_col = spoiler.end_col
+        local extmark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, sns, spoiler.line + row, spoiler.start_col, spoiler.details)
+        local map = reddit_buf.spoiler_marks_map
+        local spoiler_id = spoiler.spoiler
+        if not map[spoiler_id] then
+            map[spoiler_id] = {}
+        end
+        table.insert(map[spoiler_id], extmark)
     end
     local thing_mark = thing_marks[1] -- there should only be one... hopefully...
     vim.api.nvim_buf_set_extmark(reddit_buf.buffer, tns, thing_mark.start_line + row, 0, {
@@ -323,12 +335,12 @@ end
 local function load_more(more, reddit_buf)
     vim.async.run(function()
         ---@type NvimReddit.FetchResponse, NvimReddit.RedditError|nil
-        local response, err = vim.async.await(
+        local response, err = vim.async.await(---@diagnostic disable-line: assign-type-mismatch
             3,
             state.reddit.fetch,
-            state.reddit,
+            state.reddit, ---@diagnostic disable-line: param-type-mismatch
             "api/morechildren?api_type=json&children=" .. table.concat(more.data.children, ",") .. "&link_id=" .. more.link_id .. "&raw_json=1"
-        ) ---@diagnostic disable-line: param-type-mismatch, assign-type-mismatch
+        )
         if err then
             vim.print(err)
             return
@@ -399,17 +411,19 @@ local function load_more(more, reddit_buf)
             local lines = {}
             ---@type NvimReddit.Mark[]
             local marks = {}
+            ---@type NvimReddit.Spoiler[]
+            local spoilers = {}
             ---@type NvimReddit.ThingMark[]
             local things = {}
             ---@type NvimReddit.FoldLevels
             local foldlevels = {}
             local line = 0
             for _, thing in ipairs(base_things) do
-                local thing_lines, thing_style_marks, thing_marks, thing_foldlevels
+                local thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels
                 if thing.kind == "t1" then
-                    thing_lines, thing_style_marks, thing_marks, thing_foldlevels = render.comment(thing, true)
+                    thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels = render.comment(thing, true)
                 else
-                    thing_lines, thing_style_marks, thing_marks, thing_foldlevels = render.more(thing)
+                    thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels = render.more(thing)
                 end
                 for _, thing_line in ipairs(thing_lines) do
                     table.insert(lines, thing_line)
@@ -417,6 +431,10 @@ local function load_more(more, reddit_buf)
                 for _, style_mark in ipairs(thing_style_marks) do
                     style_mark.line = style_mark.line + line
                     table.insert(marks, style_mark)
+                end
+                for _, spoiler in ipairs(thing_spoilers) do
+                    spoiler.line = spoiler.line + line
+                    table.insert(spoilers, spoiler)
                 end
                 for _, thing_mark in ipairs(thing_marks) do
                     thing_mark.start_line = thing_mark.start_line + line
@@ -444,7 +462,7 @@ local function load_more(more, reddit_buf)
             reddit_buf.selected_mark_id = nil
 
             vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
-            util.draw(reddit_buf, lines, marks, things, foldlevels, start_line, end_line)
+            util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, start_line, end_line)
             vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
         end)
     end):raise_on_error()

@@ -78,6 +78,8 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
             local lines = {}
             ---@type NvimReddit.Mark[]
             local marks = {}
+            ---@type NvimReddit.Spoiler[]
+            local spoilers = {}
             local line = 0
             local hint = thing.data.post_hint
 
@@ -206,7 +208,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
 
                 local width = util.get_window_text_width(0)
 
-                local expando_lines, expando_marks = render.blocks(thing.parsed, math.min(width, config.spacing.max_line_length) - margin)
+                local expando_lines, expando_marks, expando_spoilers = render.blocks(thing.parsed, math.min(width, config.spacing.max_line_length) - margin)
                 for _, expando_line in ipairs(expando_lines) do
                     if expando_line == "" then
                         table.insert(lines, "")
@@ -228,6 +230,12 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                     ::add::
                     table.insert(marks, mark)
                 end
+                for _, spoiler in ipairs(expando_spoilers) do
+                    spoiler.line = spoiler.line + line
+                    spoiler.start_col = spoiler.start_col + margin
+                    spoiler.end_col = spoiler.end_col + margin
+                    table.insert(spoilers, spoiler)
+                end
                 line = line + #expando_lines
             end
 
@@ -239,7 +247,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
 
             vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
 
-            util.draw(reddit_buf, lines, marks, {}, foldlevels, thing_mark_end, thing_mark_end)
+            util.draw(reddit_buf, lines, marks, spoilers, {}, foldlevels, thing_mark_end, thing_mark_end)
 
             local image = reddit_buf.images[thing.data.id]
             if image then

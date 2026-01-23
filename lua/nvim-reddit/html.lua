@@ -1,3 +1,5 @@
+local state = require("nvim-reddit.state")
+
 local M = {}
 
 local ENTITY_MAP = {
@@ -84,7 +86,7 @@ end
 ---@class NvimReddit.RichTextCommand
 ---@field opening boolean
 ---@field type string
----@field extra string?
+---@field extra any
 
 ---@alias NvimReddit.RichText (string|NvimReddit.RichTextCommand)[]
 
@@ -119,10 +121,13 @@ function M.parse_inner(element, source)
                 goto continue
             end
 
-            ---@type string?
+            ---@type any
             local extra = nil
             if element_name == "a" then
                 extra = attrs.href
+            elseif element_name == "span" then
+                extra = state.rolling_spoiler_id
+                state.rolling_spoiler_id = state.rolling_spoiler_id + 1
             end
 
             table.insert(stream, {
@@ -254,7 +259,7 @@ function M.parse_container(container, source)
 
     for i = 1, container:child_count() - 2 do
         local element = container:child(i) ---@cast element -?
-        local name, attrs = M.get_element_info(element, source)
+        local name = M.get_element_info(element, source)
 
         if name == "p" then
             local richtext = M.parse_inner(element, source)
@@ -285,17 +290,6 @@ function M.parse_container(container, source)
             })
         elseif name == "blockquote" then
             local inner_blocks = M.parse_container(element, source)
-            -- -- assuming that blockquote elements always have a single child paragraph
-            -- local paragraph = element:child(1) ---@cast paragraph -?
-            -- local richtext = M.parse_inner(paragraph, source)
-            -- table.insert(richtext, 1, {
-            --     opening = true,
-            --     type = "blockquote"
-            -- })
-            -- table.insert(richtext, {
-            --     opening = false,
-            --     type = "blockquote"
-            -- })
             table.insert(blocks, {
                 type = "blockquote",
                 content = inner_blocks

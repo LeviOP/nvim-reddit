@@ -14,7 +14,6 @@
 
 ## feature parity with old reddit
 - handle html correctly
-  - handle inline spoiler
   - handle table element
 - handle post types correctly
   - handle crossposts
@@ -32,6 +31,7 @@
 - only show link with sticked text on subreddit
 - support commenting (and posting)
 - indicate whether link is expandable
+- ADJUST PRE END WIN COL STUFF IN BLOCKQUOTE TOO :-)
 
 ## potential enhancements
 - maybe cache blocks for comments and links (instead of just expando content)
@@ -49,8 +49,12 @@
 - support mouse
 - maybe handle custom emojis
 - handle score digit count being higher than score margin (no reddit post has ever gotten enough upvotes for this to happen, but...)
+- allow for rounded borders on flairs and other badges and stuff
+- attach spoilers to their thing instead of the global buffer (maybe anti-pattern?)
+- handle blockquote spoiler (not spoilered in new reddit)
 
 ## codebase maintenance
 - standardize variable/parameter names to make understanding offsets (0 or 1 based, column or byte based, abstract or direct data, etc.)
 - use style linter
 - maybe make separate wrapped type for state stored on things to reduce confusion
+- further collapse some mark insertion in richtext rendering

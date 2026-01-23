@@ -4,6 +4,7 @@ local state = require("nvim-reddit.state")
 local config = require("nvim-reddit.config")
 
 local tns = state.tns
+local sns = state.sns
 
 ---@module "reddit-image"
 
@@ -16,6 +17,7 @@ local M = {}
 ---@field images table<string, Image>
 --- 1-indexed
 ---@field foldlevels NvimReddit.FoldLevels
+---@field spoiler_marks_map table<integer, integer[]>
 
 ---@param path string
 function M.open(path)
@@ -46,6 +48,7 @@ function M.open(path)
         selected_mark_id = nil,
         images = {},
         foldlevels = {},
+        spoiler_marks_map = {},
     }
 
     state.buffers[buffer] = reddit_buf
@@ -107,8 +110,8 @@ function M.open(path)
         if endpoint.type == "listing" then
             ---@type NvimReddit.Listing
             local listing = response.data
-            local lines, marks, things, foldlevels = render.listing(listing, endpoint)
-            util.draw(reddit_buf, lines, marks, things, foldlevels, 0)
+            local lines, marks, spoilers, things, foldlevels = render.listing(listing, endpoint)
+            util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, 0)
         elseif endpoint.type == "article" then
             ---@type NvimReddit.Link
             local link = response.data[1].data.children[1]
@@ -128,12 +131,12 @@ function M.open(path)
             end
             link.show_subreddit = endpoint.subreddit ~= link.data.subreddit:lower()
 
-            local lines, marks, things, foldlevels = render.link(link)
+            local lines, marks, spoilers, things, foldlevels = render.link(link)
             table.insert(lines, "")
             table.insert(foldlevels, 0)
-            util.draw(reddit_buf, lines, marks, things, foldlevels, 0)
-            local c_lines, c_marks, c_things, c_foldlevels = render.listing(comments, endpoint)
-            util.draw(reddit_buf, c_lines, c_marks, c_things, c_foldlevels, #lines)
+            util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, 0)
+            local c_lines, c_marks, c_spoilers, c_things, c_foldlevels = render.listing(comments, endpoint)
+            util.draw(reddit_buf, c_lines, c_marks, c_spoilers, c_things, c_foldlevels, #lines)
         elseif endpoint.type == "about" then
             if endpoint.user then
                 --- TODO: user endpoints (not user subreddit, maybe should be normalized)
@@ -142,7 +145,7 @@ function M.open(path)
                 ---@type NvimReddit.Subreddit
                 local subreddit = response.data
                 local lines, marks = render.sidebar(subreddit)
-                util.draw(reddit_buf, lines, marks, {}, {}, 0)
+                util.draw(reddit_buf, lines, marks, {}, {}, {}, 0)
             end
         end
 
@@ -233,6 +236,43 @@ function M.open(path)
 
         vim.keymap.set("n", "<Esc>", function()
             state.set_mode("normal")
+        end, { buffer = buffer })
+
+
+        vim.keymap.set("n", "K" , function()
+            local cursor = vim.api.nvim_win_get_cursor(0);
+            local pos = { cursor[1] - 1, cursor[2] }
+            local spoiler_marks = vim.api.nvim_buf_get_extmarks(buffer, sns, pos, pos, { details = true, overlap = true })
+
+            local mark_count = #spoiler_marks
+            if mark_count == 0 then
+                return
+            elseif mark_count > 1 then
+                print("we found more than one spoiler under the cursor?")
+                return
+            end
+
+            local found_spoiler_mark = spoiler_marks[1][1]
+
+            local spoiler_id
+            for id, id_spoiler_marks in pairs(reddit_buf.spoiler_marks_map) do
+                for _, spoiler_mark in ipairs(id_spoiler_marks) do
+                    if spoiler_mark == found_spoiler_mark then
+                        spoiler_id = id
+                        goto found
+                    end
+                end
+            end
+            if not spoiler_id then
+                print("We couldn't find a spoiler_id that included our found mark!")
+                return
+            end
+            ::found::
+
+            for _, spoiler_mark in ipairs(reddit_buf.spoiler_marks_map[spoiler_id]) do
+                vim.api.nvim_buf_del_extmark(buffer, sns, spoiler_mark)
+            end
+            reddit_buf.spoiler_marks_map[spoiler_id] = nil
         end, { buffer = buffer })
 
         --- FIXME: add "dev" config option or something

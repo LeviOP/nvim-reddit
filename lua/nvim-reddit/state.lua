@@ -4,13 +4,17 @@
 ---@field reddit NvimReddit.RedditClient|nil
 ---@field ns integer
 ---@field tns integer
+---@field sns integer
 ---@field buffers table<integer, NvimReddit.Buffer>
 ---@field mode NvimReddit.Mode
+---@field rolling_spoiler_id integer
 local M = {
     ns = vim.api.nvim_create_namespace("nvim_reddit"),
     tns = vim.api.nvim_create_namespace("nvim_reddit_things"),
+    sns = vim.api.nvim_create_namespace("nvim_reddit_spoilers"),
     buffers = {},
     mode = "normal",
+    rolling_spoiler_id = 0,
 }
 
 local config = require("nvim-reddit.config")

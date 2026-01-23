@@ -6,7 +6,7 @@ local REDDIT_BASE = "https://www.reddit.com"
 -- I don't think it should be a huge performance hit (?)
 
 ---@param type string
----@param extra string?
+---@param extra any
 ---@return vim.api.keyset.set_extmark
 local function inline_to_details(type, extra)
     ---@type vim.api.keyset.set_extmark
@@ -28,7 +28,8 @@ local function inline_to_details(type, extra)
             hl_group = "RedditCode"
         }
     elseif type == "a" then
-        ---@cast extra -? -- reddit-provided anchors should always have href?
+        -- reddit-provided anchors should always have href? (this shouldn't be nil)
+        ---@cast extra string
         if extra:match("^/") then
             extra = REDDIT_BASE .. extra
         end
@@ -64,8 +65,12 @@ local function inline_to_details(type, extra)
         details = {
             hl_group = "RedditSup"
         }
+    elseif type == "span" then
+        -- we manually handle this in functions below, because we need
+        -- to know how wide the text is to cover it
+        details = {}
     else
-        print("we don't handle this element:", type)
+        print("No mark conversion for this element:", type)
         details = {}
     end
 
@@ -76,7 +81,8 @@ end
 ---@field lines string[]
 ---@field line integer
 ---@field marks NvimReddit.Mark[]
----@field open ({ type: string, extra: string?, line: integer, col: integer })[]
+---@field spoilers NvimReddit.Spoiler[]
+---@field open ({ type: string, extra: any, line: integer, col: integer })[]
 ---@field current string
 ---@field current_bytes integer
 ---@field word_carry ({ word: string, commands: NvimReddit.RichTextCommand[] })[]
@@ -108,13 +114,31 @@ local function process_carry(state, offset, new_line)
                 for i, o in ipairs(state.open) do
                     if o.type == command.type then
                         table.remove(state.open, i)
-                        local details = inline_to_details(o.type, o.extra)
-                        table.insert(state.marks, {
-                            details = details,
-                            line = state.line,
-                            start_col = new_line and o.col or offset,
-                            end_col = offset + carry_word_bytes
-                        })
+
+                        local start_col = new_line and o.col or offset
+                        local end_col = offset + carry_word_bytes
+                        if o.type == "span" then
+                            local spoilered = state.current:sub(start_col + 1, end_col + 1)
+                            table.insert(state.spoilers, {
+                                details = {
+                                    virt_text = {{("█"):rep(vim.fn.strdisplaywidth(spoilered)), "RedditSpoiler"}},
+                                    virt_text_pos = "overlay",
+                                    invalidate = true,
+                                },
+                                line = state.line,
+                                start_col = start_col,
+                                end_col = end_col,
+                                spoiler = o.extra,
+                            })
+                        else
+                            local details = inline_to_details(o.type, o.extra)
+                            table.insert(state.marks, {
+                                details = details,
+                                line = state.line,
+                                start_col = start_col,
+                                end_col = end_col,
+                            })
+                        end
                         break
                     end
                 end
@@ -134,13 +158,30 @@ local function insert_line_marks(state)
         -- affecting any words, don't bother insert it. not sure if this test
         -- will always work. i guess we will find out :)
         if o.col < state.current_bytes then
-            local details = inline_to_details(o.type, o.extra)
-            table.insert(state.marks, {
-                details = details,
-                line = o.line,
-                start_col = o.col,
-                end_col = state.current_bytes
-            })
+            local start_col = o.col
+            local end_col = state.current_bytes
+            if o.type == "span" then
+                local spoilered = state.current:sub(start_col + 1, end_col + 1)
+                table.insert(state.spoilers, {
+                    details = {
+                        virt_text = {{("█"):rep(vim.fn.strdisplaywidth(spoilered)), "RedditSpoiler"}},
+                        virt_text_pos = "overlay",
+                        invalidate = true,
+                    },
+                    line = o.line,
+                    start_col = start_col,
+                    end_col = end_col,
+                    spoiler = o.extra,
+                })
+            else
+                local details = inline_to_details(o.type, o.extra)
+                table.insert(state.marks, {
+                    details = details,
+                    line = o.line,
+                    start_col = start_col,
+                    end_col = end_col,
+                })
+            end
         end
         -- reset the line and column for this open command, which will now be
         -- open on the next line
@@ -199,13 +240,14 @@ end
 
 ---@param richtext NvimReddit.RichText
 ---@param width integer
----@return string[], NvimReddit.Mark[]
+---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[]
 function M.render(richtext, width)
     ---@type NvimReddit.RichTextRenderState
     local state = {
         lines = {},
         line = 0,
         marks = {},
+        spoilers = {},
         open = {},
         current = "",
         current_bytes = 0,
@@ -323,13 +365,30 @@ function M.render(richtext, width)
                                 if state.current_bytes == 0 then
                                     break
                                 end
-                                local details = inline_to_details(o.type, o.extra)
-                                table.insert(state.marks, {
-                                    details = details,
-                                    line = o.line,
-                                    start_col = o.col,
-                                    end_col = state.current_bytes
-                                })
+                                local start_col = o.col
+                                local end_col = state.current_bytes
+                                if o.type == "span" then
+                                    local spoilered = state.current:sub(start_col + 1, end_col + 1)
+                                    table.insert(state.spoilers, {
+                                        details = {
+                                            virt_text = {{("█"):rep(vim.fn.strdisplaywidth(spoilered)), "RedditSpoiler"}},
+                                            virt_text_pos = "overlay",
+                                            invalidate = true,
+                                        },
+                                        line = o.line,
+                                        start_col = start_col,
+                                        end_col = end_col,
+                                        spoiler = o.extra,
+                                    })
+                                else
+                                    local details = inline_to_details(o.type, o.extra)
+                                    table.insert(state.marks, {
+                                        details = details,
+                                        line = o.line,
+                                        start_col = start_col,
+                                        end_col = end_col,
+                                    })
+                                end
                                 break
                             end
                         end
@@ -355,7 +414,7 @@ function M.render(richtext, width)
     if state.current_bytes ~= 0 then
         state.lines[state.line + 1] = state.current
     end
-    return state.lines, state.marks
+    return state.lines, state.marks, state.spoilers
 end
 
 return M

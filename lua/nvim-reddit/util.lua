@@ -1,6 +1,7 @@
 local state = require("nvim-reddit.state")
 
 local ns = state.ns
+local sns = state.sns
 local tns = state.tns
 
 local uv = vim.uv
@@ -195,11 +196,12 @@ end
 ---@param reddit_buf NvimReddit.Buffer
 ---@param lines string[]
 ---@param marks NvimReddit.Mark[]
+---@param spoilers NvimReddit.Spoiler[]
 ---@param things NvimReddit.ThingMark[]
 ---@param foldlevels NvimReddit.FoldLevels
 ---@param start_line integer
 ---@param end_line? integer
-function M.draw(reddit_buf, lines, marks, things, foldlevels, start_line, end_line)
+function M.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, start_line, end_line)
     end_line = end_line or -1
 
     local buffer_foldlevels = reddit_buf.foldlevels
@@ -229,6 +231,19 @@ function M.draw(reddit_buf, lines, marks, things, foldlevels, start_line, end_li
         mark.details.end_row = mark.line
         mark.details.end_col = mark.end_col
         vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, mark.line, mark.start_col, mark.details)
+    end
+
+    for _, spoiler in ipairs(spoilers) do
+        spoiler.line = spoiler.line + start_line
+        spoiler.details.end_row = spoiler.line
+        spoiler.details.end_col = spoiler.end_col
+        local extmark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, sns, spoiler.line, spoiler.start_col, spoiler.details)
+        local map = reddit_buf.spoiler_marks_map
+        local spoiler_id = spoiler.spoiler
+        if not map[spoiler_id] then
+            map[spoiler_id] = {}
+        end
+        table.insert(map[spoiler_id], extmark)
     end
 
     for _, thing in ipairs(things) do

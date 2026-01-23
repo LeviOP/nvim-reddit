@@ -141,3 +141,7 @@ vim.api.nvim_set_hl(0, "RedditModeStatus", {
     foreground = "#FFFFFF",
     background = "#FF4500",
 })
+
+vim.api.nvim_set_hl(0, "RedditSpoiler", {
+    foreground = "#4f4f4f"
+})

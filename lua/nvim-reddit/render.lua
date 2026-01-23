@@ -7,21 +7,26 @@ local M = {}
 local LIST_PADDING = 4
 local REDDIT_BASE = "https://www.reddit.com/"
 
----@class NvimReddit.Mark
+---@class (exact) NvimReddit.Mark
 ---@field details table<string, any>
 ---@field line integer
 ---@field start_col integer
 ---@field end_col integer
 
+---@class (exact) NvimReddit.Spoiler: NvimReddit.Mark
+---@field spoiler integer
+
 ---@param list List
 ---@param width integer
----@return string[], NvimReddit.Mark[]
+---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[]
 function M.list(list, width)
     ---@type string[]
     local lines = {}
     local line = 0
     ---@type NvimReddit.Mark[]
     local marks = {}
+    ---@type NvimReddit.Spoiler[]
+    local spoilers = {}
     for item_num, item in ipairs(list.items) do
         local first_item_line
         if list.ordered then
@@ -31,7 +36,7 @@ function M.list(list, width)
         end
         table.insert(lines, first_item_line)
         for p_num, p in ipairs(item.content) do
-            local content_lines, content_marks = richtext.render(p, width - (LIST_PADDING + 2))
+            local content_lines, content_marks, content_spoilers = richtext.render(p, width - (LIST_PADDING + 2))
             for content_line_num, content_line in ipairs(content_lines) do
                 if p_num == 1 and content_line_num == 1 then
                     local last_index = #lines
@@ -46,11 +51,17 @@ function M.list(list, width)
                 mark.start_col = mark.start_col + LIST_PADDING + 1
                 table.insert(marks, mark)
             end
+            for _, spoiler in ipairs(content_spoilers) do
+                spoiler.line = spoiler.line + line
+                spoiler.end_col = spoiler.end_col + LIST_PADDING + 1
+                spoiler.start_col = spoiler.start_col + LIST_PADDING + 1
+                table.insert(spoilers, spoiler)
+            end
             line = line + #content_lines
         end
         local p_count = #item.content
         if item.sublist ~= nil then
-            local sublist_lines, sublist_marks = M.list(item.sublist, width - (LIST_PADDING * 2))
+            local sublist_lines, sublist_marks, sublist_spoilers = M.list(item.sublist, width - (LIST_PADDING * 2))
             for sublist_line_num, sublist_line in ipairs(sublist_lines) do
                 if sublist_line_num == 1 and p_count == 0 then
                     local last_index = #lines
@@ -65,28 +76,38 @@ function M.list(list, width)
                 mark.start_col = mark.start_col + (LIST_PADDING + 1)
                 table.insert(marks, mark)
             end
+            for _, spoiler in ipairs(sublist_spoilers) do
+                spoiler.line = spoiler.line + line
+                spoiler.end_col = spoiler.end_col + (LIST_PADDING + 1)
+                spoiler.start_col = spoiler.start_col + (LIST_PADDING + 1)
+                table.insert(spoilers, spoiler)
+            end
             line = line + #sublist_lines
         elseif p_count == 0 then
             line = line + 1
         end
     end
-    return lines, marks
+    return lines, marks, spoilers
 end
 
 ---@param blocks NvimReddit.Block[]
 ---@param width integer
----@return string[], NvimReddit.Mark[]
+---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[]
 function M.blockquote(blocks, width)
     -- FIXME: make this configurable and only calculated once
     local pad = "┃ "
     local pad_bytes = pad:len()
     local pad_width = vim.fn.strdisplaywidth(pad)
 
-    local lines, marks = M.blocks(blocks, width - pad_width)
+    local lines, marks, spoilers = M.blocks(blocks, width - pad_width)
 
     for _, mark in ipairs(marks) do
         mark.start_col = mark.start_col + pad_bytes
         mark.end_col = mark.end_col + pad_bytes
+    end
+    for _, spoiler in ipairs(spoilers) do
+        spoiler.start_col = spoiler.start_col + pad_bytes
+        spoiler.end_col = spoiler.end_col + pad_bytes
     end
     for i, line in ipairs(lines) do
         local length = line:len()
@@ -110,19 +131,19 @@ function M.blockquote(blocks, width)
             end_col = length + pad_bytes,
         })
     end
-    return lines, marks
+    return lines, marks, spoilers
 end
 
 ---@param _ nil
 ---@param width integer
----@return string[], NvimReddit.Mark[]
+---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[]
 function M.hr(_, width)
-    return {("━"):rep(width)}, {}
+    return {("━"):rep(width)}, {}, {}
 end
 
 ---@param text string
 ---@param width integer
----@return string[], NvimReddit.Mark[]
+---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[]
 function M.pre(text, width)
     ---@type string[]
     local lines = {}
@@ -149,10 +170,10 @@ function M.pre(text, width)
         })
         i = i + 1
     end
-    return lines, marks
+    return lines, marks, {}
 end
 
----@type table<string, fun(contents: any, width: integer): string[], NvimReddit.Mark[]>
+---@type table<string, fun(contents: any, width: integer): string[], NvimReddit.Mark[], NvimReddit.Spoiler[]>
 local TYPE_RENDERER_MAP = {
     richtext = richtext.render,
     list = M.list,
@@ -164,13 +185,15 @@ local TYPE_RENDERER_MAP = {
 ---Render an array of blocks
 ---@param blocks NvimReddit.Block[]
 ---@param width integer
----@return string[], NvimReddit.Mark[]
+---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[]
 function M.blocks(blocks, width)
     ---@type string[]
     local lines = {}
     local line = 0
     ---@type NvimReddit.Mark[]
     local marks = {}
+    ---@type NvimReddit.Spoiler[]
+    local spoilers = {}
     for _, block in ipairs(blocks) do
         local renderer = TYPE_RENDERER_MAP[block.type]
         if renderer == nil then
@@ -178,7 +201,7 @@ function M.blocks(blocks, width)
             goto continue
         end
 
-        local block_lines, block_marks = renderer(block.content, width)
+        local block_lines, block_marks, block_spoilers = renderer(block.content, width)
         for _, block_line in ipairs(block_lines) do
             table.insert(lines, block_line)
         end
@@ -186,11 +209,15 @@ function M.blocks(blocks, width)
             mark.line = mark.line + line
             table.insert(marks, mark)
         end
+        for _, spoiler in ipairs(block_spoilers) do
+            spoiler.line = spoiler.line + line
+            table.insert(spoilers, spoiler)
+        end
         line = line + #block_lines
         ::continue::
     end
 
-    return lines, marks
+    return lines, marks, spoilers
 end
 
 local flair_hls = {}
@@ -248,13 +275,15 @@ local function get_conditional(value)
 end
 
 ---@param lines NvimReddit.Line[]
----@return string[], NvimReddit.Mark[]
+---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[]
 function M.lines(lines)
     ---@type string[]
     local rendered_lines = {}
     local cur_line = 0
     ---@type NvimReddit.Mark[]
     local marks = {}
+    ---@type NvimReddit.Spoiler[]
+    local spoilers = {}
     for _, line in ipairs(lines) do
         local rendered_line = "";
         for _, seg in ipairs(line) do
@@ -305,7 +334,7 @@ function M.lines(lines)
                     local width = util.get_window_text_width(0)
                     local blocks = html.parse_md(seg[1])
                     local col = vim.fn.strdisplaywidth(rendered_line)
-                    local content_lines, content_marks = M.blocks(blocks, math.min(width - col, config.spacing.max_line_length))
+                    local content_lines, content_marks, content_spoilers = M.blocks(blocks, math.min(width - col, config.spacing.max_line_length))
                     for i, content_line in ipairs(content_lines) do
                         if i == 1 then
                             table.insert(rendered_lines, rendered_line .. content_line)
@@ -332,6 +361,12 @@ function M.lines(lines)
                         ::add::
                         mark.line = mark.line + cur_line
                         table.insert(marks, mark)
+                    end
+                    for _, spoiler in ipairs(content_spoilers) do
+                        spoiler.end_col = (spoiler.line == 0 and offset or col) + spoiler.end_col
+                        spoiler.start_col = (spoiler.line == 0 and offset or col) + spoiler.start_col
+                        spoiler.line = spoiler.line + cur_line
+                        table.insert(spoilers, spoiler)
                     end
                     if seg.hl_group then
                         for i, content_line in ipairs(content_lines) do
@@ -362,7 +397,7 @@ function M.lines(lines)
         cur_line = cur_line + 1
         ::out::
     end
-    return rendered_lines, marks
+    return rendered_lines, marks, spoilers
 end
 
 ---@alias LineMark table<string, LineConditional>
@@ -383,7 +418,7 @@ end
 ---@alias NvimReddit.Line (LineSegment)[] -- parentheses so that type expansion doesn't look confusing
 
 ---@param thing NvimReddit.Link
----@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
+---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
 function M.link(thing)
     local link = thing.data
 
@@ -500,7 +535,7 @@ function M.link(thing)
     }
 
 
-    local rendered_lines, marks = M.lines(lines)
+    local rendered_lines, marks, spoilers = M.lines(lines)
     local line_count = #rendered_lines
     ---@type NvimReddit.ThingMark[]
     local things = {{
@@ -515,12 +550,12 @@ function M.link(thing)
         foldlevels[line] = 0
     end
 
-    return rendered_lines, marks, things, foldlevels
+    return rendered_lines, marks, spoilers, things, foldlevels
 end
 
 ---@param thing NvimReddit.Comment
 ---@param render_children boolean
----@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
+---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
 function M.comment(thing, render_children)
     local comment = thing.data
 
@@ -633,7 +668,7 @@ function M.comment(thing, render_children)
     end
 
 
-    local rendered_lines, marks = M.lines(lines)
+    local rendered_lines, marks, spoilers = M.lines(lines)
     local top_len = #rendered_lines
 
     ---@type NvimReddit.ThingMark[]
@@ -714,20 +749,20 @@ function M.comment(thing, render_children)
     if type(comment.replies) == "table" and render_children then
         if comment.replies.kind ~= "Listing" then
             print("Why aren't the replies a listing!??!!!!")
-            return rendered_lines, marks, things, {}
+            return rendered_lines, marks, spoilers, things, {}
         end
 
         for i, child in ipairs(comment.replies.data.children) do
-            local child_lines, child_marks, child_things, child_foldlevels
+            local child_lines, child_marks, child_spoilers, child_things, child_foldlevels
             if child.kind == "t1" then
                 child.padding = thing.padding + 2
-                child_lines, child_marks, child_things, child_foldlevels = M.comment(child, true)
+                child_lines, child_marks, child_spoilers, child_things, child_foldlevels = M.comment(child, true)
             elseif child.kind == "more" then
                 child.padding = thing.padding + 2
                 child.link_id = thing.data.link_id
                 child.self_index = i
                 child.parent = thing
-                child_lines, child_marks, child_things, child_foldlevels = M.more(child)
+                child_lines, child_marks, child_spoilers, child_things, child_foldlevels = M.more(child)
             else
                 print("Unexpected kind in replies children:", child.kind)
                 goto continue
@@ -742,6 +777,10 @@ function M.comment(thing, render_children)
                 mark.line = mark.line + line
                 table.insert(marks, mark)
             end
+            for _, spoiler in ipairs(child_spoilers) do
+                spoiler.line = spoiler.line + line
+                table.insert(spoilers, spoiler)
+            end
             local child_line_count = #child_lines
             for _, child_thing in ipairs(child_things) do
                 child_thing.start_line = child_thing.start_line + line
@@ -755,11 +794,11 @@ function M.comment(thing, render_children)
         end
     end
 
-    return rendered_lines, marks, things, foldlevels
+    return rendered_lines, marks, spoilers, things, foldlevels
 end
 
 ---@param thing NvimReddit.More
----@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
+---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
 function M.more(thing)
     local count = thing.data.count
     ---@type NvimReddit.Line[]
@@ -800,7 +839,7 @@ function M.more(thing)
         thing = thing
     }}
 
-    return rendered_lines, marks, things, {thing.padding / 2 + 1}
+    return rendered_lines, marks, {}, things, {thing.padding / 2 + 1}
 end
 
 ---@param thing NvimReddit.Subreddit
@@ -834,22 +873,24 @@ end
 
 ---@param listing NvimReddit.Listing
 ---@param endpoint NvimReddit.ParsedEndpoint
----@return string[], NvimReddit.Mark[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
+---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
 function M.listing(listing, endpoint)
     ---@type string[]
     local lines = {}
     ---@type NvimReddit.Mark[]
     local marks = {}
+    ---@type NvimReddit.Spoiler[]
+    local spoilers = {}
     ---@type NvimReddit.ThingMark[]
     local things = {}
     ---@type NvimReddit.FoldLevels
     local foldlevels = {}
     local line = 0
     for i, thing in ipairs(listing.data.children) do
-        local thing_lines, thing_style_marks, thing_marks, thing_foldlevels
+        local thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels
         if thing.kind == "t1" then
             thing.padding = 0
-            thing_lines, thing_style_marks, thing_marks, thing_foldlevels = M.comment(thing, true)
+            thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels = M.comment(thing, true)
         elseif thing.kind == "t3" then
             -- crossposts don't have a domain
             if thing.data.domain == "" then
@@ -866,13 +907,13 @@ function M.listing(listing, endpoint)
                 end
             end
             thing.show_subreddit = endpoint.subreddit ~= thing.data.subreddit:lower()
-            thing_lines, thing_style_marks, thing_marks, thing_foldlevels = M.link(thing)
+            thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels = M.link(thing)
         elseif thing.kind == "more" then
             thing.padding = 0
             thing.link_id = thing.data.parent_id
             thing.self_index = i
             thing.parent = listing
-            thing_lines, thing_style_marks, thing_marks, thing_foldlevels = M.more(thing)
+            thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels = M.more(thing)
         else
             print("unhandled thing kind!:", thing.kind)
             goto continue
@@ -883,6 +924,10 @@ function M.listing(listing, endpoint)
         for _, style_mark in ipairs(thing_style_marks) do
             style_mark.line = style_mark.line + line
             table.insert(marks, style_mark)
+        end
+        for _, thing_spoiler in ipairs(thing_spoilers) do
+            thing_spoiler.line = thing_spoiler.line + line
+            table.insert(spoilers, thing_spoiler)
         end
         for _, thing_mark in ipairs(thing_marks) do
             thing_mark.start_line = thing_mark.start_line + line
@@ -940,7 +985,7 @@ function M.listing(listing, endpoint)
         table.insert(lines, more_line)
     end
 
-    return lines, marks, things, foldlevels
+    return lines, marks, spoilers, things, foldlevels
 end
 
 return M
