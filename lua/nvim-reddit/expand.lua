@@ -136,17 +136,15 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                     end
 
                     ::exit::
-                elseif hint ~= "link" and hint ~= "self" then
+                elseif hint ~= "self" then
                     table.insert(lines, (" "):rep(margin) .. "<" .. hint .. ">")
                     line = line + 1
                     if hint == "hosted:video" then
-                        if thing.data.secure_media.reddit_video then
-                            ---@type string[]
-                            local player_args = {}
-                            for i, arg in ipairs(config.player_options) do player_args[i] = arg end
-                            table.insert(player_args, thing.data.secure_media.reddit_video.dash_url)
-                            thing.player_job = vim.system(player_args, nil, config.player_onexit)
-                        end
+                        ---@type string[]
+                        local player_args = {}
+                        for i, arg in ipairs(config.player_options) do player_args[i] = arg end
+                        table.insert(player_args, thing.data.secure_media.reddit_video.dash_url)
+                        thing.player_job = vim.system(player_args, nil, config.player_onexit)
                     end
                 end
             elseif thing.data.is_gallery then
@@ -194,6 +192,16 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                 line = line + 1
 
                 ::exit::
+            elseif thing.data.secure_media ~= vim.NIL then
+                if thing.data.secure_media.reddit_video then
+                    table.insert(lines, (" "):rep(margin) .. "<hosted:video>")
+                    line = line + 1
+                    ---@type string[]
+                    local player_args = {}
+                    for i, arg in ipairs(config.player_options) do player_args[i] = arg end
+                    table.insert(player_args, thing.data.secure_media.reddit_video.dash_url)
+                    thing.player_job = vim.system(player_args, nil, config.player_onexit)
+                end
             elseif thing.data.crosspost_parent then
                 table.insert(lines, (" "):rep(margin) .. "<crosspost>")
                 line = line + 1
