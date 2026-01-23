@@ -118,7 +118,7 @@ local function process_carry(state, offset, new_line)
                     if o.type == command.type then
                         table.remove(state.open, i)
 
-                        if new_line then
+                        if new_line and o.line ~= state.line then
                             local last_line = state.lines[state.line]
                             local last_line_bytes = last_line:len()
                             -- commands are inserted without knowledge of whether the next word
