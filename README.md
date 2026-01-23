@@ -31,7 +31,6 @@
 - only show link with sticked text on subreddit
 - support commenting (and posting)
 - indicate whether link is expandable
-- ADJUST PRE END WIN COL STUFF IN BLOCKQUOTE TOO :-)
 
 ## potential enhancements
 - maybe cache blocks for comments and links (instead of just expando content)

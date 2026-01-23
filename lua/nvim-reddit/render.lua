@@ -99,37 +99,60 @@ function M.blockquote(blocks, width)
     local pad_bytes = pad:len()
     local pad_width = vim.fn.strdisplaywidth(pad)
 
+    local pad_no_trailing = pad:gsub("%s+$", "")
+    local pad_no_trailing_bytes = pad_no_trailing:len()
+
     local lines, marks, spoilers = M.blocks(blocks, width - pad_width)
 
     for _, mark in ipairs(marks) do
+        if mark.details.virt_text_win_col then
+            mark.details.virt_text_win_col = pad_width + mark.details.virt_text_win_col
+            if mark.start_col == mark.end_col then
+                goto next
+            end
+        end
         mark.start_col = mark.start_col + pad_bytes
         mark.end_col = mark.end_col + pad_bytes
+        ::next::
     end
     for _, spoiler in ipairs(spoilers) do
         spoiler.start_col = spoiler.start_col + pad_bytes
         spoiler.end_col = spoiler.end_col + pad_bytes
     end
     for i, line in ipairs(lines) do
-        local length = line:len()
-        lines[i] = pad .. line
-        table.insert(marks, {
-            details = {
-                priority = 200,
-                hl_group = "RedditBlockquotePad"
-            },
-            line = i - 1,
-            start_col = 0,
-            end_col = pad_bytes,
-        })
-        table.insert(marks, {
-            details = {
-                priority = 200,
-                hl_group = "RedditBlockquote"
-            },
-            line = i - 1,
-            start_col = pad_bytes,
-            end_col = length + pad_bytes,
-        })
+        if line ~= "" then
+            local length = line:len()
+            lines[i] = pad .. line
+            table.insert(marks, {
+                details = {
+                    priority = 200,
+                    hl_group = "RedditBlockquote"
+                },
+                line = i - 1,
+                start_col = pad_bytes,
+                end_col = length + pad_bytes,
+            })
+            table.insert(marks, {
+                details = {
+                    priority = 200,
+                    hl_group = "RedditBlockquotePad"
+                },
+                line = i - 1,
+                start_col = 0,
+                end_col = pad_bytes,
+            })
+        else
+            lines[i] = pad_no_trailing
+            table.insert(marks, {
+                details = {
+                    priority = 200,
+                    hl_group = "RedditBlockquotePad"
+                },
+                line = i - 1,
+                start_col = 0,
+                end_col = pad_no_trailing_bytes,
+            })
+        end
     end
     return lines, marks, spoilers
 end
