@@ -13,25 +13,24 @@
 - show errors onscreen instead of printing (and use vim.notify)
 
 ## feature parity with old reddit
-- handle html correctly
-  - handle table element
+- fix some issues with richtext rendering
+  - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)
+- handle nsfw/spoiler links
+- support commenting (and posting)
+- indicate whether link is expandable
 - handle post types correctly
   - handle crossposts
     - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
-- handle nsfw/spoiler links
 - handle rich:video and similar
 - support contest mode
 - visibly indicate when post is archived
 - visibly indicate when post is locked
-- fix some issues with richtext rendering
-  - apparently if some markup ends on the word after a newline the markup isn't applied to the line before
-  - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)
 - provide way to show inline images in post body
 - only show link with sticked text on subreddit
-- support commenting (and posting)
-- indicate whether link is expandable
+- handle table element
 
 ## potential enhancements
+- show `removed_by_category`
 - maybe cache blocks for comments and links (instead of just expando content)
 - maybe address ueberzug image render failing directly after resizing terminal window
 - maybe indicate when `more` children returned nothing
@@ -50,6 +49,7 @@
 - allow for rounded borders on flairs and other badges and stuff
 - attach spoilers to their thing instead of the global buffer (maybe anti-pattern?)
 - handle blockquote spoiler (not spoilered in new reddit)
+- add mark/hl_group for gallery caption
 
 ## codebase maintenance
 - standardize variable/parameter names to make understanding offsets (0 or 1 based, column or byte based, abstract or direct data, etc.)

@@ -79,6 +79,7 @@ end
 
 ---@class (exact) NvimReddit.RichTextRenderState
 ---@field lines string[]
+---This is a 0-based line index, but we use it to index the lines array by adding one to it
 ---@field line integer
 ---@field marks NvimReddit.Mark[]
 ---@field spoilers NvimReddit.Spoiler[]
@@ -97,7 +98,7 @@ local function process_carry(state, offset, new_line)
     -- commands. If the command is closing, remove it from the list of open commands
     -- and create a mark for that now finished command
 
-    -- when we are on a new line, we position the openings at the end the word, in
+    -- when we are on a new line, we position the openings at the start the word, in
     -- line with how they were inserted. also set the start of inserted marks to the
     -- offset of the word on the new line, instead of the original opening column.
     for _, carry in ipairs(state.word_carry) do
@@ -108,14 +109,43 @@ local function process_carry(state, offset, new_line)
                     type = command.type,
                     extra = command.extra,
                     line = state.line,
-                    col = offset + (new_line and carry_word_bytes or 0)
+                    col = offset + (new_line and 0 or carry_word_bytes)
                 })
             else
+                -- loop just to find the open command that we need to close. (we're not really
+                -- removing anything mid-loop that would cause a reindex and loop failure)
                 for i, o in ipairs(state.open) do
                     if o.type == command.type then
                         table.remove(state.open, i)
 
-                        local start_col = new_line and o.col or offset
+                        if new_line then
+                            local last_line = state.lines[state.line]
+                            local last_line_bytes = last_line:len()
+                            if o.type == "span" then
+                                local spoilered = last_line:sub(o.col + 1, last_line_bytes)
+                                table.insert(state.spoilers, {
+                                    details = {
+                                        virt_text = {{("█"):rep(vim.fn.strdisplaywidth(spoilered)), "RedditSpoiler"}},
+                                        virt_text_pos = "overlay",
+                                        invalidate = true,
+                                    },
+                                    line = o.line,
+                                    start_col = o.col,
+                                    end_col = last_line_bytes,
+                                    spoiler = o.extra,
+                                })
+                            else
+                                local details = inline_to_details(o.type, o.extra)
+                                table.insert(state.marks, {
+                                    details = details,
+                                    line = o.line,
+                                    start_col = o.col,
+                                    end_col = last_line_bytes,
+                                })
+                            end
+                        end
+
+                        local start_col = new_line and offset or o.col
                         local end_col = offset + carry_word_bytes
                         if o.type == "span" then
                             local spoilered = state.current:sub(start_col + 1, end_col + 1)
@@ -211,10 +241,10 @@ local function maybe_wrap(state, word, word_cells, width)
             state.line = state.line + 1
         end
 
-        process_carry(state, 0, false)
+        process_carry(state, 0, true)
 
         -- now that we've processed the carry, we can insert all of the marks for
-        -- the line that we just inserted
+        -- commands that are still open the line that we just inserted
         insert_line_marks(state)
 
         -- set the current line to the word which caused us to wrap
@@ -234,7 +264,7 @@ local function maybe_wrap(state, word, word_cells, width)
         end
         state.current_bytes = state.current:len()
 
-        process_carry(state, carry_offset, true)
+        process_carry(state, carry_offset, false)
     end
 end
 
