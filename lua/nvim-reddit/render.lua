@@ -440,6 +440,17 @@ end
 ---@alias LineSegment LineSegmentTable|LineSegmentMDHTML|string
 ---@alias NvimReddit.Line (LineSegment)[] -- parentheses so that type expansion doesn't look confusing
 
+---@type table<NvimReddit.LinkContents, string>
+local CONTENTS_ICON_MAP = {
+    ["image"] = "󰄀",
+    ["selftext"] = "󰺫",
+    ["link"] = "",
+    ["gallery"] = "",
+    ["hosted_video"] = "󰦳",
+    ["rich_video"] = "󰦳",
+    ["crosspost"] = "󱓊",
+}
+
 ---@param thing NvimReddit.Link
 ---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
 function M.link(thing)
@@ -549,6 +560,10 @@ function M.link(thing)
                 show_arrows and "󰜮" or " ",
                 padding = config.spacing.score_margin,
                 marks = {{ hl_group = { "RedditDownvoted", condition = link.likes == false } }}
+            },
+            {
+                "[" .. (CONTENTS_ICON_MAP[thing.contents] or "?") .. "]",
+                condition = thing.contents ~= nil
             },
             {
                 link.num_comments .. " comments",
@@ -915,13 +930,13 @@ function M.listing(listing, endpoint)
             thing.padding = 0
             thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels = M.comment(thing, true)
         elseif thing.kind == "t3" then
-            -- crossposts don't have a domain
+            -- crossposts don't have a domain (also removed posts? even though official reddit ui shows one)
             if thing.data.domain == "" then
                 thing.domain_url = ""
             else
                 ---@type string
                 local url_domain = thing.data.url:match("^%w+://([^/:?#]+)")
-                -- url_domain = url_domain:gsub("^www%.", "")
+                -- url_domain = url_domain:gsub("^www%.", "") -- idr what this was for
                 if url_domain ~= thing.data.domain then
                     -- this might not be a good assumption to make, but we'll see i guess
                     thing.domain_url = thing.data.subreddit_name_prefixed
@@ -930,6 +945,47 @@ function M.listing(listing, endpoint)
                 end
             end
             thing.show_subreddit = endpoint.subreddit ~= thing.data.subreddit:lower()
+
+            local hint = thing.data.post_hint
+            if hint then
+                if hint == "image" then
+                    thing.contents = "image"
+                elseif hint == "link" then
+                    thing.contents = "link"
+                elseif hint == "self" then
+                    thing.contents = "selftext"
+                elseif hint == "hosted:video" then
+                    thing.contents = "hosted_video"
+                elseif hint == "rich:video" then
+                    thing.contents = "rich_video"
+                else
+                    print("Unhandled hint type?", hint)
+                end
+            elseif thing.data.is_self then
+                if thing.data.selftext_html ~= vim.NIL then
+                    thing.contents = "selftext"
+                end
+                -- If is_self is true but there is no selftext, it's a
+                -- title-only post with no body
+            elseif thing.data.is_gallery then
+                thing.contents = "gallery"
+            elseif thing.data.secure_media ~= vim.NIL then
+                if thing.data.secure_media.reddit_video then
+                    thing.contents = "hosted_video"
+                elseif thing.data.secure_media.oembed then
+                    thing.contents = "rich_video"
+                else
+                    vim.print("unknown media type?", thing.data.secure_media)
+                end
+            elseif thing.data.crosspost_parent then
+                thing.contents = "crosspost"
+            elseif thing.data.selftext_html ~= vim.NIL then
+                thing.contents = "selftext"
+            else
+                thing.contents = "link"
+                print("assuming this is a link:", thing.data.title)
+            end
+
             thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels = M.link(thing)
         elseif thing.kind == "more" then
             thing.padding = 0

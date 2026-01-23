@@ -231,6 +231,10 @@ function M.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, start_li
         mark.details.end_row = mark.line
         mark.details.end_col = mark.end_col
         vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, mark.line, mark.start_col, mark.details)
+        -- local ok = pcall(vim.api.nvim_buf_set_extmark,reddit_buf.buffer, ns, mark.line, mark.start_col, mark.details)
+        -- if not ok then
+        --     vim.print(mark)
+        -- end
     end
 
     for _, spoiler in ipairs(spoilers) do

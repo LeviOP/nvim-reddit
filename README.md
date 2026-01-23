@@ -1,6 +1,8 @@
-# todo:
+# nvim-reddit
 
-## important project niceties
+## todo:
+
+### important project niceties
 - write a real readme
 - better configuration
   - configurable highlights
@@ -12,12 +14,11 @@
 - make sure bottom of thing is visible in post mode (when "scrolling" down)
 - show errors onscreen instead of printing (and use vim.notify)
 
-## feature parity with old reddit
+### feature parity with old reddit
 - fix some issues with richtext rendering
   - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)
 - handle nsfw/spoiler links
 - support commenting (and posting)
-- indicate whether link is expandable
 - handle post types correctly
   - handle crossposts
     - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
@@ -28,8 +29,9 @@
 - provide way to show inline images in post body
 - only show link with sticked text on subreddit
 - handle table element
+- fix problem where open is not set until image has loaded (leading to desync on first image load while going up and down)
 
-## potential enhancements
+### potential enhancements
 - show `removed_by_category`
 - maybe cache blocks for comments and links (instead of just expando content)
 - maybe address ueberzug image render failing directly after resizing terminal window
@@ -50,9 +52,11 @@
 - attach spoilers to their thing instead of the global buffer (maybe anti-pattern?)
 - handle blockquote spoiler (not spoilered in new reddit)
 - add mark/hl_group for gallery caption
+- display polls (there is no way to vote, but you can get results after voting on official client)
 
-## codebase maintenance
+### codebase maintenance
 - standardize variable/parameter names to make understanding offsets (0 or 1 based, column or byte based, abstract or direct data, etc.)
 - use style linter
 - maybe make separate wrapped type for state stored on things to reduce confusion
 - further collapse some mark insertion in richtext rendering
+- only use async.run where nessecary instead of just blanket over everything

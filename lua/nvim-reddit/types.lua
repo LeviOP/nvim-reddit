@@ -34,6 +34,7 @@
 ---@class (exact) NvimReddit.Link
 ---@field data NvimReddit.LinkData
 ---@field kind "t3"
+---@field contents NvimReddit.LinkContents
 ---@field show_subreddit boolean|nil
 ---@field parsed NvimReddit.Block[]|nil
 ---@field expando_mark integer|nil
@@ -43,6 +44,16 @@
 ---@field gallery_item_line_count integer|nil
 ---@field player_job vim.SystemObj|nil
 ---@field mark integer|nil
+
+---@alias NvimReddit.LinkContents
+---|"image"
+---|"selftext"
+---|"link"
+---|"gallery"
+---|"hosted_video"
+---|"rich_video"
+---|"crosspost"
+---|nil
 
 ---@class (exact) NvimReddit.Subreddit
 ---@field data NvimReddit.SubredditData

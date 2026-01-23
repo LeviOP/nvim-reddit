@@ -75,7 +75,8 @@ function M.open(path)
         vim.async.await(2, state.reddit.get_access_token, state.reddit)
     end
 
-    -- HACK: do actual query params parsing...
+    -- Maybe this isn't the best way to do things, but there's no reason
+    -- to parse all of the params correctly or anything if this works fine
     if path:find("?") then
         path = path .. "&raw_json=1"
     else
@@ -102,7 +103,7 @@ function M.open(path)
     end
 
     local endpoint = util.parse_reddit_endpoint(path)
-    -- it's nicer if we don't let the user (or code) know about this
+    -- it's nicer if we don't make the code (or user) deal with this
     endpoint.params["raw_json"] = nil
 
     vim.schedule(function()
@@ -110,31 +111,18 @@ function M.open(path)
         if endpoint.type == "listing" then
             ---@type NvimReddit.Listing
             local listing = response.data
+
             local lines, marks, spoilers, things, foldlevels = render.listing(listing, endpoint)
             util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, 0)
         elseif endpoint.type == "article" then
-            ---@type NvimReddit.Link
-            local link = response.data[1].data.children[1]
+            ---@type NvimReddit.Listing
+            local link_listing = response.data[1]
             ---@type NvimReddit.Listing
             local comments = response.data[2]
 
-            -- HACK: this is stuff that we usually set up in in render.listing.
-            -- we might want to move this to a standard place instead of at
-            -- every call site
-            ---@type string
-            local url_domain = link.data.url:match("^%w+://([^/:?#]+)")
-            if url_domain ~= link.data.domain then
-                -- this might not be a good assumption to make, but we'll see i guess
-                link.domain_url = link.data.subreddit_name_prefixed
-            else
-                link.domain_url = "domain/" .. link.data.domain
-            end
-            link.show_subreddit = endpoint.subreddit ~= link.data.subreddit:lower()
-
-            local lines, marks, spoilers, things, foldlevels = render.link(link)
-            table.insert(lines, "")
-            table.insert(foldlevels, 0)
+            local lines, marks, spoilers, things, foldlevels = render.listing(link_listing, endpoint)
             util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, 0)
+
             local c_lines, c_marks, c_spoilers, c_things, c_foldlevels = render.listing(comments, endpoint)
             util.draw(reddit_buf, c_lines, c_marks, c_spoilers, c_things, c_foldlevels, #lines)
         elseif endpoint.type == "about" then

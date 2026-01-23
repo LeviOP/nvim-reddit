@@ -83,75 +83,76 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
             ---@type NvimReddit.Spoiler[]
             local spoilers = {}
             local line = 0
-            local hint = thing.data.post_hint
 
             local margin = config.spacing.score_margin + 1
             local margin_string = (" "):rep(margin)
             local window_width = util.get_window_text_width(0)
             local width = math.min(window_width, config.spacing.max_line_length) - margin
 
-            if hint then
-                if hint == "image" then
-                    if not reddit_buf.images[thing.data.id] then
-                        local url
-                        if thing.data.preview then
-                            if #thing.data.preview.images ~= 1 then
-                                print("More than one preview.images?", #thing.data.preview.images)
-                            end
-                            local preview = thing.data.preview.images[1]
-                            url = M.get_best_image_resolution_url(preview)
+            if thing.contents == "image" then
+                if not reddit_buf.images[thing.data.id] then
+                    local url
+                    if thing.data.preview then
+                        if #thing.data.preview.images ~= 1 then
+                            print("More than one preview.images?", #thing.data.preview.images)
+                        end
+                        local preview = thing.data.preview.images[1]
+                        url = M.get_best_image_resolution_url(preview)
 
-                            if config.use_gif_player then
-                                local player_url
-                                if preview.variants.mp4 then
-                                    player_url = preview.variants.mp4.source.url
-                                elseif preview.variants.gif then
-                                    player_url = preview.variants.gif.source.url
-                                end
-                                if player_url then
-                                    ---@type string[]
-                                    local player_args = {}
-                                    for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
-                                    table.insert(player_args, player_url)
-                                    thing.player_job = vim.system(player_args, nil, config.player_onexit)
-                                end
+                        if config.use_gif_player then
+                            local player_url
+                            if preview.variants.mp4 then
+                                player_url = preview.variants.mp4.source.url
+                            elseif preview.variants.gif then
+                                player_url = preview.variants.gif.source.url
+                            end
+                            if player_url then
+                                ---@type string[]
+                                local player_args = {}
+                                for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
+                                table.insert(player_args, player_url)
+                                thing.player_job = vim.system(player_args, nil, config.player_onexit)
                             end
                         end
-                        if not url then
-                            url = thing.data.url_overridden_by_dest or thing.data.url
-                        end
-
-                        ---@type Image|nil
-                        ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
-                        local image = vim.async.await(3, image_api.from_url, url, {
-                            buffer = reddit_buf.buffer,
-                            window = vim.api.nvim_get_current_win(),
-                            with_virtual_padding = true,
-                            y = thing_mark_end - 1,
-                            x = margin,
-                        })
-                        if image == nil then
-                            print("image was nil?!?!")
-                            goto exit
-                        end
-                        M.watch_image_extmark(image)
-
-                        reddit_buf.images[thing.data.id] = image
+                    end
+                    if not url then
+                        url = thing.data.url_overridden_by_dest or thing.data.url
                     end
 
-                    ::exit::
-                elseif hint ~= "self" then
-                    table.insert(lines, margin_string .. "<" .. hint .. ">")
-                    line = line + 1
-                    if hint == "hosted:video" then
-                        ---@type string[]
-                        local player_args = {}
-                        for i, arg in ipairs(config.player_options) do player_args[i] = arg end
-                        table.insert(player_args, thing.data.secure_media.reddit_video.dash_url)
-                        thing.player_job = vim.system(player_args, nil, config.player_onexit)
+                    ---@type Image|nil
+                    ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
+                    local image = vim.async.await(3, image_api.from_url, url, {
+                        buffer = reddit_buf.buffer,
+                        window = vim.api.nvim_get_current_win(),
+                        with_virtual_padding = true,
+                        y = thing_mark_end - 1,
+                        x = margin,
+                    })
+                    if image == nil then
+                        print("image was nil?!?!")
+                        goto exit
                     end
+                    M.watch_image_extmark(image)
+
+                    reddit_buf.images[thing.data.id] = image
                 end
-            elseif thing.data.is_gallery then
+
+                ::exit::
+            elseif thing.contents == "hosted_video" then
+                table.insert(lines, margin_string .. "<hosted:video>")
+                line = line + 1
+                ---@type string[]
+                local player_args = {}
+                for i, arg in ipairs(config.player_options) do player_args[i] = arg end
+                table.insert(player_args, thing.data.secure_media.reddit_video.dash_url)
+                thing.player_job = vim.system(player_args, nil, config.player_onexit)
+            elseif thing.contents == "rich_video" then
+                table.insert(lines, margin_string .. "<rich:video>")
+                line = line + 1
+            elseif thing.contents == "link" then
+                table.insert(lines, margin_string .. "<link>")
+                line = line + 1
+            elseif thing.contents == "gallery" then
                 if not thing.gallery_selected then
                     thing.gallery_selected = 1
                 end
@@ -220,17 +221,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                 thing.gallery_item_line_count = item_lines
 
                 ::exit::
-            elseif thing.data.secure_media ~= vim.NIL then
-                if thing.data.secure_media.reddit_video then
-                    table.insert(lines, margin_string .. "<hosted:video>")
-                    line = line + 1
-                    ---@type string[]
-                    local player_args = {}
-                    for i, arg in ipairs(config.player_options) do player_args[i] = arg end
-                    table.insert(player_args, thing.data.secure_media.reddit_video.dash_url)
-                    thing.player_job = vim.system(player_args, nil, config.player_onexit)
-                end
-            elseif thing.data.crosspost_parent then
+            elseif thing.contents == "crosspost" then
                 table.insert(lines, margin_string .. "<crosspost>")
                 line = line + 1
             end
