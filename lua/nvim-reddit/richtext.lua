@@ -121,27 +121,33 @@ local function process_carry(state, offset, new_line)
                         if new_line then
                             local last_line = state.lines[state.line]
                             local last_line_bytes = last_line:len()
-                            if o.type == "span" then
-                                local spoilered = last_line:sub(o.col + 1, last_line_bytes)
-                                table.insert(state.spoilers, {
-                                    details = {
-                                        virt_text = {{("█"):rep(vim.fn.strdisplaywidth(spoilered)), "RedditSpoiler"}},
-                                        virt_text_pos = "overlay",
-                                        invalidate = true,
-                                    },
-                                    line = o.line,
-                                    start_col = o.col,
-                                    end_col = last_line_bytes,
-                                    spoiler = o.extra,
-                                })
-                            else
-                                local details = inline_to_details(o.type, o.extra)
-                                table.insert(state.marks, {
-                                    details = details,
-                                    line = o.line,
-                                    start_col = o.col,
-                                    end_col = last_line_bytes,
-                                })
+                            -- commands are inserted without knowledge of whether the next word
+                            -- will actually be on the same line, or wrap. if it wrapped without
+                            -- affecting any words, don't bother insert it. not sure if this test
+                            -- will always work. i guess we will find out :)
+                            if o.col < last_line_bytes then
+                                if o.type == "span" then
+                                    local spoilered = last_line:sub(o.col + 1, last_line_bytes)
+                                    table.insert(state.spoilers, {
+                                        details = {
+                                            virt_text = {{("█"):rep(vim.fn.strdisplaywidth(spoilered)), "RedditSpoiler"}},
+                                            virt_text_pos = "overlay",
+                                            invalidate = true,
+                                        },
+                                        line = o.line,
+                                        start_col = o.col,
+                                        end_col = last_line_bytes,
+                                        spoiler = o.extra,
+                                    })
+                                else
+                                    local details = inline_to_details(o.type, o.extra)
+                                    table.insert(state.marks, {
+                                        details = details,
+                                        line = o.line,
+                                        start_col = o.col,
+                                        end_col = last_line_bytes,
+                                    })
+                                end
                             end
                         end
 
