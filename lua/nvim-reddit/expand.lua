@@ -17,53 +17,57 @@ local M = {}
 function M.comment(thing, reddit_buf, thing_mark_start)
     if not thing.media then return end
     if not thing.open then
-        vim.async.run(function()
-            if not reddit_buf.images[thing.data.id] then
-                local media = thing.media.media
-                local url = M.get_best_image_resolution_url(media)
+        local media = thing.media.media
+        local url = M.get_best_image_resolution_url(media)
 
-                if media.e == "AnimatedImage" and config.use_gif_player then
-                    ---@type string[]
-                    local player_args = {}
-                    for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
-                    table.insert(player_args, media.s.mp4)
-                    thing.player_job = vim.system(player_args, nil, config.player_onexit)
-                end
+        if media.e == "AnimatedImage" and config.use_gif_player then
+            ---@type string[]
+            local player_args = {}
+            for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
+            table.insert(player_args, media.s.mp4)
+            thing.player_job = vim.system(player_args, nil, config.player_onexit)
+        end
 
-                vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
-                ---@type Image|nil
-                ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
-                local image = vim.async.await(3, image_api.from_url, url, {
-                    buffer = reddit_buf.buffer,
-                    window = vim.api.nvim_get_current_win(),
-                    with_virtual_padding = true
-                })
-                if image == nil then
-                    print("image was nil?!?!")
+        if config.set_topline_on_expand then
+            vim.fn.winrestview({ topline = thing_mark_start + 1 })
+        end
+
+        thing.open = true
+
+        image_api.from_url(
+            url,
+            {
+                buffer = reddit_buf.buffer,
+                window = vim.api.nvim_get_current_win(),
+                with_virtual_padding = true,
+                x = thing.padding + 2,
+                y = thing_mark_start + thing.media.line,
+            },
+            function(image)
+                if not image then
+                    print("Failed to load image")
                     return
                 end
-
                 reddit_buf.images[thing.data.id] = image
+                if thing.open then
+                    vim.schedule(function()
+                        image:render()
+                    end)
+                end
             end
-
-            if config.set_topline_on_expand then
-                vim.fn.winrestview({ topline = thing_mark_start + 1 })
-            end
-            local image = reddit_buf.images[thing.data.id]
-            image:render({
-                y = thing_mark_start + thing.media.line,
-                x = thing.padding + 2
-            })
-
-            thing.open = true
-        end):raise_on_error()
+        )
     else
         if thing.player_job then
             thing.player_job:kill("sigterm")
             thing.player_job = nil
         end
-        reddit_buf.images[thing.data.id]:clear()
-        reddit_buf.images[thing.data.id] = nil
+        local image = reddit_buf.images[thing.data.id]
+        if image then
+            reddit_buf.images[thing.data.id] = nil
+            vim.schedule(function()
+                image:clear()
+            end)
+        end
         thing.open = false
     end
 end
@@ -74,228 +78,224 @@ end
 ---@param thing_mark_end integer
 function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
     if not thing.open then
-        vim.async.run(function()
+        ---@type string[]
+        local lines = {}
+        ---@type NvimReddit.Mark[]
+        local marks = {}
+        ---@type NvimReddit.Spoiler[]
+        local spoilers = {}
+        local line = 0
+        ---@type { url: string; x: integer; y: integer }|nil
+        local new_image = nil
 
+        local margin = config.spacing.score_margin + 1
+        local margin_string = (" "):rep(margin)
+        local window_width = util.get_window_text_width(0)
+        local width = math.min(window_width, config.spacing.max_line_length) - margin
+
+        if thing.contents == "image" then
+            -- FIXME: why are we checking for existing if we always nil set it before closing? (trying fix in comment expand)
+            if not reddit_buf.images[thing.data.id] then
+                local url
+                if thing.data.preview then
+                    if #thing.data.preview.images ~= 1 then
+                        print("More than one preview.images?", #thing.data.preview.images)
+                    end
+                    local preview = thing.data.preview.images[1]
+                    url = M.get_best_image_resolution_url(preview)
+
+                    if config.use_gif_player then
+                        local player_url
+                        if preview.variants.mp4 then
+                            player_url = preview.variants.mp4.source.url
+                        elseif preview.variants.gif then
+                            player_url = preview.variants.gif.source.url
+                        end
+                        if player_url then
+                            ---@type string[]
+                            local player_args = {}
+                            for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
+                            table.insert(player_args, player_url)
+                            thing.player_job = vim.system(player_args, nil, config.player_onexit)
+                        end
+                    end
+                end
+                if not url then
+                    url = thing.data.url_overridden_by_dest or thing.data.url
+                end
+
+                new_image = {
+                    url = url,
+                    x = margin,
+                    y = thing_mark_end - 1
+                }
+            end
+        elseif thing.contents == "hosted_video" then
+            table.insert(lines, margin_string .. "<hosted:video>")
+            line = line + 1
             ---@type string[]
-            local lines = {}
-            ---@type NvimReddit.Mark[]
-            local marks = {}
-            ---@type NvimReddit.Spoiler[]
-            local spoilers = {}
-            local line = 0
-
-            local margin = config.spacing.score_margin + 1
-            local margin_string = (" "):rep(margin)
-            local window_width = util.get_window_text_width(0)
-            local width = math.min(window_width, config.spacing.max_line_length) - margin
-
-            if thing.contents == "image" then
-                if not reddit_buf.images[thing.data.id] then
-                    local url
-                    if thing.data.preview then
-                        if #thing.data.preview.images ~= 1 then
-                            print("More than one preview.images?", #thing.data.preview.images)
-                        end
-                        local preview = thing.data.preview.images[1]
-                        url = M.get_best_image_resolution_url(preview)
-
-                        if config.use_gif_player then
-                            local player_url
-                            if preview.variants.mp4 then
-                                player_url = preview.variants.mp4.source.url
-                            elseif preview.variants.gif then
-                                player_url = preview.variants.gif.source.url
-                            end
-                            if player_url then
-                                ---@type string[]
-                                local player_args = {}
-                                for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
-                                table.insert(player_args, player_url)
-                                thing.player_job = vim.system(player_args, nil, config.player_onexit)
-                            end
-                        end
-                    end
-                    if not url then
-                        url = thing.data.url_overridden_by_dest or thing.data.url
-                    end
-
-                    ---@type Image|nil
-                    ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
-                    local image = vim.async.await(3, image_api.from_url, url, {
-                        buffer = reddit_buf.buffer,
-                        window = vim.api.nvim_get_current_win(),
-                        with_virtual_padding = true,
-                        y = thing_mark_end - 1,
-                        x = margin,
-                    })
-                    if image == nil then
-                        print("image was nil?!?!")
-                        goto exit
-                    end
-                    M.watch_image_extmark(image)
-
-                    reddit_buf.images[thing.data.id] = image
+            local player_args = {}
+            for i, arg in ipairs(config.player_options) do player_args[i] = arg end
+            table.insert(player_args, thing.data.secure_media.reddit_video.dash_url)
+            thing.player_job = vim.system(player_args, nil, config.player_onexit)
+        elseif thing.contents == "rich_video" then
+            table.insert(lines, margin_string .. "<rich:video>")
+            line = line + 1
+        elseif thing.contents == "link" then
+            table.insert(lines, margin_string .. "<link>")
+            line = line + 1
+        elseif thing.contents == "gallery" then
+            if not thing.gallery_selected then
+                thing.gallery_selected = 1
+            end
+            local item = thing.data.gallery_data.items[thing.gallery_selected]
+            if not reddit_buf.images[thing.data.id] then
+                local media = thing.data.media_metadata[item.media_id]
+                if not media then
+                    print("Media was missing?")
+                    return
                 end
 
-                ::exit::
-            elseif thing.contents == "hosted_video" then
-                table.insert(lines, margin_string .. "<hosted:video>")
-                line = line + 1
-                ---@type string[]
-                local player_args = {}
-                for i, arg in ipairs(config.player_options) do player_args[i] = arg end
-                table.insert(player_args, thing.data.secure_media.reddit_video.dash_url)
-                thing.player_job = vim.system(player_args, nil, config.player_onexit)
-            elseif thing.contents == "rich_video" then
-                table.insert(lines, margin_string .. "<rich:video>")
-                line = line + 1
-            elseif thing.contents == "link" then
-                table.insert(lines, margin_string .. "<link>")
-                line = line + 1
-            elseif thing.contents == "gallery" then
-                if not thing.gallery_selected then
-                    thing.gallery_selected = 1
+                local url = M.get_best_image_resolution_url(media)
+
+                if media.e == "AnimatedImage" and config.use_gif_player then
+                    ---@type string[]
+                    local player_args = {}
+                    for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
+                    table.insert(player_args, media.s.mp4)
+                    thing.player_job = vim.system(player_args, nil, config.player_onexit)
                 end
-                local item = thing.data.gallery_data.items[thing.gallery_selected]
-                if not reddit_buf.images[thing.data.id] then
-                    local media = thing.data.media_metadata[item.media_id]
-                    if not media then
-                        print("Media was missing?")
+
+                new_image = {
+                    url = url,
+                    x = margin,
+                    y = thing_mark_end
+                }
+            end
+
+            table.insert(lines, margin_string .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items)
+            line = line + 1
+
+            local item_lines = 0
+            if item.caption then
+                local caption_lines = richtext.render({item.caption}, width)
+                for _, caption_line in ipairs(caption_lines) do
+                    table.insert(lines, margin_string .. caption_line)
+                end
+                item_lines = #caption_lines
+                line = line + item_lines
+            end
+            if item.outbound_url then
+                table.insert(lines, margin_string .. item.outbound_url)
+                table.insert(marks, {
+                    details = {
+                        hl_group = "RedditAnchor",
+                        url = item.outbound_url,
+                    },
+                    line = line,
+                    start_col = margin,
+                    end_col = margin + item.outbound_url:len(),
+                })
+                item_lines = item_lines + 1
+                line = line + 1
+            end
+            thing.gallery_item_line_count = item_lines
+        elseif thing.contents == "crosspost" then
+            table.insert(lines, margin_string .. "<crosspost>")
+            line = line + 1
+        end
+
+        local selftext_html = thing.data.selftext_html
+        if selftext_html ~= vim.NIL then ---@cast selftext_html -vim.NIL -- why can't luals figure this out???
+            if thing.parsed == nil then
+                local blocks = html.parse_md(selftext_html)
+                thing.parsed = blocks
+            end
+
+            local expando_lines, expando_marks, expando_spoilers = render.blocks(thing.parsed, width)
+            for _, expando_line in ipairs(expando_lines) do
+                if expando_line == "" then
+                    table.insert(lines, "")
+                else
+                    table.insert(lines, margin_string .. expando_line)
+                end
+            end
+
+            for _, mark in ipairs(expando_marks) do
+                if mark.details.virt_text_win_col then
+                    mark.details.virt_text_win_col = mark.details.virt_text_win_col + margin
+                    if mark.start_col == mark.end_col then
+                        goto add
+                    end
+                end
+                mark.line = mark.line + line
+                mark.start_col = mark.start_col + margin
+                mark.end_col = mark.end_col + margin
+                ::add::
+                table.insert(marks, mark)
+            end
+            for _, spoiler in ipairs(expando_spoilers) do
+                spoiler.line = spoiler.line + line
+                spoiler.start_col = spoiler.start_col + margin
+                spoiler.end_col = spoiler.end_col + margin
+                table.insert(spoilers, spoiler)
+            end
+            line = line + #expando_lines
+        end
+
+        ---@type integer[]
+        local foldlevels = {}
+        for i = 1, #lines do
+            foldlevels[i] = 0
+        end
+
+        if config.set_topline_on_expand then
+            vim.fn.winrestview({ topline = thing_mark_start + 1 })
+        end
+
+        vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
+
+        util.draw(reddit_buf, lines, marks, spoilers, {}, foldlevels, thing_mark_end, thing_mark_end)
+
+        vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+
+        thing.expando_mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end, 0, {
+            id = thing.expando_mark,
+            end_row = thing_mark_end + line,
+            hl_group = "RedditExpanded",
+            hl_eol = true,
+            priority = 50,
+        })
+
+        thing.open = true
+
+        if new_image then
+            image_api.from_url(
+                new_image.url,
+                {
+                    buffer = reddit_buf.buffer,
+                    window = vim.api.nvim_get_current_win(),
+                    with_virtual_padding = true,
+                    x = new_image.x,
+                    y = new_image.y
+                },
+                function(image)
+                    if not image then
+                        print("Failed to load image")
                         return
                     end
-
-                    local url = M.get_best_image_resolution_url(media)
-
-                    if media.e == "AnimatedImage" and config.use_gif_player then
-                        ---@type string[]
-                        local player_args = {}
-                        for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
-                        table.insert(player_args, media.s.mp4)
-                        thing.player_job = vim.system(player_args, nil, config.player_onexit)
-                    end
-
-                    ---@type Image|nil
-                    ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
-                    local image = vim.async.await(3, image_api.from_url, url, {
-                        buffer = reddit_buf.buffer,
-                        window = vim.api.nvim_get_current_win(),
-                        with_virtual_padding = true,
-                        y = thing_mark_end,
-                        x = margin,
-                    })
-                    if image == nil then
-                        print("image was nil?!?!")
-                        goto exit
-                    end
-                    M.watch_image_extmark(image)
-
                     reddit_buf.images[thing.data.id] = image
-                end
-
-                table.insert(lines, margin_string .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items)
-                line = line + 1
-
-                local item_lines = 0
-                if item.caption then
-                    local caption_lines = richtext.render({item.caption}, width)
-                    for _, caption_line in ipairs(caption_lines) do
-                        table.insert(lines, margin_string .. caption_line)
-                    end
-                    item_lines = #caption_lines
-                    line = line + item_lines
-                end
-                if item.outbound_url then
-                    table.insert(lines, margin_string .. item.outbound_url)
-                    table.insert(marks, {
-                        details = {
-                            hl_group = "RedditAnchor",
-                            url = item.outbound_url,
-                        },
-                        line = line,
-                        start_col = margin,
-                        end_col = margin + item.outbound_url:len(),
-                    })
-                    item_lines = item_lines + 1
-                    line = line + 1
-                end
-                thing.gallery_item_line_count = item_lines
-
-                ::exit::
-            elseif thing.contents == "crosspost" then
-                table.insert(lines, margin_string .. "<crosspost>")
-                line = line + 1
-            end
-
-            local selftext_html = thing.data.selftext_html
-            if selftext_html ~= vim.NIL then ---@cast selftext_html -vim.NIL -- why can't luals figure this out???
-                if thing.parsed == nil then
-                    local blocks = html.parse_md(selftext_html)
-                    thing.parsed = blocks
-                end
-
-                local expando_lines, expando_marks, expando_spoilers = render.blocks(thing.parsed, width)
-                for _, expando_line in ipairs(expando_lines) do
-                    if expando_line == "" then
-                        table.insert(lines, "")
-                    else
-                        table.insert(lines, margin_string .. expando_line)
+                    M.watch_image_extmark(image)
+                    if thing.open then
+                    vim.schedule(function()
+                        image:render()
+                    end)
                     end
                 end
-
-                for _, mark in ipairs(expando_marks) do
-                    if mark.details.virt_text_win_col then
-                        mark.details.virt_text_win_col = mark.details.virt_text_win_col + margin
-                        if mark.start_col == mark.end_col then
-                            goto add
-                        end
-                    end
-                    mark.line = mark.line + line
-                    mark.start_col = mark.start_col + margin
-                    mark.end_col = mark.end_col + margin
-                    ::add::
-                    table.insert(marks, mark)
-                end
-                for _, spoiler in ipairs(expando_spoilers) do
-                    spoiler.line = spoiler.line + line
-                    spoiler.start_col = spoiler.start_col + margin
-                    spoiler.end_col = spoiler.end_col + margin
-                    table.insert(spoilers, spoiler)
-                end
-                line = line + #expando_lines
-            end
-
-            ---@type integer[]
-            local foldlevels = {}
-            for i = 1, #lines do
-                foldlevels[i] = 0
-            end
-
-            vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
-
-            util.draw(reddit_buf, lines, marks, spoilers, {}, foldlevels, thing_mark_end, thing_mark_end)
-
-            local image = reddit_buf.images[thing.data.id]
-            if image then
-                image:render()
-            end
-
-            vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
-
-            thing.expando_mark = vim.api.nvim_buf_set_extmark(reddit_buf.buffer, ns, thing_mark_end, 0, {
-                id = thing.expando_mark,
-                end_row = thing_mark_end + line,
-                hl_group = "RedditExpanded",
-                hl_eol = true,
-                priority = 50,
-            })
-
-            if config.set_topline_on_expand then
-                vim.fn.winrestview({ topline = thing_mark_start + 1 })
-            end
-
-            thing.open = true
-        end):raise_on_error()
+            )
+        end
     else -- closing
+        thing.open = false
         if thing.player_job then
             thing.player_job:kill("sigterm")
             thing.player_job = nil
@@ -305,27 +305,28 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
 
         local image = reddit_buf.images[thing.data.id]
         if image then
-            image:clear()
             reddit_buf.images[thing.data.id] = nil
+            vim.schedule(function()
+                image:clear()
+            end)
         end
+        if thing.expando_mark then
+            local row, _, expando_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, ns, thing.expando_mark, { details = true }))
 
-        local row, _, expando_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, ns, thing.expando_mark, { details = true }))
+            util.array_remove_range(reddit_buf.foldlevels, row + 1, expando_details.end_row)
 
-        util.array_remove_range(reddit_buf.foldlevels, row + 1, expando_details.end_row)
-
-        -- HACK: for some reason when an image is added (or maybe removed?) after
-        -- the post is re-rendered due to voting, the end_row of the mark is set to 0
-        if expando_details.end_row > row then
-            local cursor = vim.api.nvim_win_get_cursor(0);
-            vim.api.nvim_buf_set_lines(reddit_buf.buffer, row, expando_details.end_row, false, {})
-            if expando_details.end_row >= cursor[1] and cursor[1] > row then
-                vim.api.nvim_win_set_cursor(0, { row, cursor[2] })
+            -- HACK: for some reason when an image is added (or maybe removed?) after
+            -- the post is re-rendered due to voting, the end_row of the mark is set to 0
+            if expando_details.end_row > row then
+                local cursor = vim.api.nvim_win_get_cursor(0);
+                vim.api.nvim_buf_set_lines(reddit_buf.buffer, row, expando_details.end_row, false, {})
+                if expando_details.end_row >= cursor[1] and cursor[1] > row then
+                    vim.api.nvim_win_set_cursor(0, { row, cursor[2] })
+                end
             end
         end
 
         vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
-
-        thing.open = false
     end
 end
 

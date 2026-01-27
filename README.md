@@ -15,13 +15,11 @@
 - show errors onscreen instead of printing (and use vim.notify)
 
 ### feature parity with old reddit
-- fix some issues with richtext rendering
-  - zwsp after newline doesn't turn newline into space? something weird (handle whitespace more accurately)
+- fix more comments loading (somehow broken)
 - handle nsfw/spoiler links
 - support commenting (and posting)
-- handle post types correctly
-  - handle crossposts
-    - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
+- handle crossposts
+  - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
 - handle rich:video and similar
 - support contest mode
 - visibly indicate when post is archived
@@ -29,7 +27,6 @@
 - provide way to show inline images in post body
 - only show link with sticked text on subreddit
 - handle table element
-- fix problem where open is not set until image has loaded (leading to desync on first image load while going up and down)
 
 ### potential enhancements
 - show `removed_by_category`
@@ -59,4 +56,3 @@
 - use style linter
 - maybe make separate wrapped type for state stored on things to reduce confusion
 - further collapse some mark insertion in richtext rendering
-- only use async.run where nessecary instead of just blanket over everything

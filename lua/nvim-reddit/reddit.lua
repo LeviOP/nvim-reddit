@@ -25,7 +25,11 @@ function Reddit.new(opts)
     return self
 end
 
-function Reddit:wait_for_code(state, port, cb)
+function Reddit:wait_for_code(state, port)
+    local co = coroutine.running()
+
+    local code
+
     local server = uv.new_tcp()
     if not server then
         print("failed to create server!")
@@ -70,13 +74,24 @@ function Reddit:wait_for_code(state, port, cb)
                 client:shutdown()
                 client:close()
                 server:close()
-                cb(params.code)
+                code = params.code
+
+                vim.schedule(function()
+                    coroutine.resume(co)
+                end)
             end
         end)
     end)
+
+    coroutine.yield()
+
+    return code
 end
 
-function Reddit:retrieve_access_token(code, cb)
+function Reddit:retrieve_access_token(code)
+    local co = coroutine.running()
+
+    local access_token
     curl.post("https://www.reddit.com/api/v1/access_token", {
         body = {
             grant_type = "authorization_code",
@@ -92,27 +107,40 @@ function Reddit:retrieve_access_token(code, cb)
                     vim.fn.writefile({ json.refresh_token }, self.token_file)
                 end)
             end
-            cb(json.access_token)
+            access_token = json.access_token
+            vim.schedule(function()
+                coroutine.resume(co)
+            end)
         end
     })
 
+    coroutine.yield()
+
+    return access_token
 end
 
-function Reddit:get_access_token(cb)
+function Reddit:get_access_token()
+    local co = coroutine.running()
+
     if vim.fn.filereadable(self.token_file) == 1 then
         local refresh = vim.fn.readfile(self.token_file)[1]
-        local res = curl.post("https://www.reddit.com/api/v1/access_token", {
+        curl.post("https://www.reddit.com/api/v1/access_token", {
             body = {
                 grant_type = "refresh_token",
                 refresh_token = refresh
             },
             auth = self.client_id .. ":" .. self.client_secret,
-            headers = { ["User-Agent"] = self.useragent }
+            headers = { ["User-Agent"] = self.useragent },
+            ---@param res { body: string, headers: string[], status: integer }
+            callback = function(res)
+                -- FIXME: there are probably errors to handle here?
+                local json = vim.json.decode(res.body)
+                self.token = json.access_token
+                vim.schedule(function()
+                    coroutine.resume(co)
+                end)
+            end
         })
-        -- FIXME: there are probably errors to handle here?
-        local json = vim.json.decode(res.body)
-        self.token = json.access_token
-        cb()
     else
         local state = tostring(math.random(1, 1e9))
         local url = string.format(
@@ -122,13 +150,16 @@ function Reddit:get_access_token(cb)
 
         vim.ui.open(url)
 
-        self:wait_for_code(state, config.port, function(code)
-            self:retrieve_access_token(code, function(token)
-                self.token = token
-                cb()
-            end)
+        local code = self:wait_for_code(state, config.port)
+        local token = self:retrieve_access_token(code)
+        self.token = token
+
+        vim.schedule(function()
+            coroutine.resume(co)
         end)
     end
+
+    coroutine.yield()
 end
 
 ---@class (exact) NvimReddit.FetchResponse
@@ -142,9 +173,15 @@ end
 ---@field reason string?
 
 ---@param path string
----@param cb fun(result: NvimReddit.FetchResponse|nil, err: NvimReddit.RedditError|nil)
-function Reddit:fetch(path, cb)
+---@return NvimReddit.FetchResponse|nil, NvimReddit.RedditError|nil
+function Reddit:fetch(path)
+    local co = coroutine.running()
+
     local location = "https://oauth.reddit.com/" .. path
+    ---@type NvimReddit.FetchResponse|nil
+    local response
+    ---@type NvimReddit.RedditError|nil
+    local err
     curl.get(location, {
         headers = {
             Authorization = "bearer " .. self.token,
@@ -155,16 +192,20 @@ function Reddit:fetch(path, cb)
             local ok, result = pcall(vim.json.decode, res.body)
             if not ok then
                 if res.status ~= 200 then
-                    cb(nil, {
+                    err = {
                         message = "",
                         status = res.status
-                    })
-                    return
+                    }
+                else
+                    err = {
+                        message = res.body,
+                        status = res.status
+                    }
                 end
-                cb(nil, {
-                    message = res.body,
-                    status = res.status
-                })
+
+                vim.schedule(function()
+                    coroutine.resume(co)
+                end)
                 return
             end
 
@@ -181,22 +222,33 @@ function Reddit:fetch(path, cb)
                     end
                 end
             elseif res.status ~= 200 then
-                cb(nil, {
+                err = {
                     message = result.message,
                     reason = result.reason,
                     status = res.status
-                })
+                }
+
+                vim.schedule(function()
+                    coroutine.resume(co)
+                end)
+                return
             end
 
-            ---@type NvimReddit.FetchResponse
-            local response = {
+            response = {
                 data = result,
                 location = location,
                 rawdata = res.body
             }
-            cb(response, nil)
+
+            vim.schedule(function()
+                coroutine.resume(co)
+            end)
         end
     })
+
+    coroutine.yield()
+
+    return response, err
 end
 
 ---@param fullname string

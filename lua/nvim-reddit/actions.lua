@@ -133,13 +133,9 @@ end
 ---@param thing NvimReddit.Selectable
 function M.open_comments(thing)
     if thing.kind == "t3" then
-        vim.async.run(function()
-            buffer.open(thing.data.permalink:sub(2))
-        end):raise_on_error()
+        buffer.open(thing.data.permalink:sub(2))
     elseif thing.kind == "t1" and thing.data.link_permalink then
-        vim.async.run(function()
-            buffer.open(thing.data.link_permalink:gsub("^https://www.reddit.com/", ""))
-        end):raise_on_error()
+        buffer.open(thing.data.link_permalink:gsub("^https://www.reddit.com/", ""))
     else
         print("not a link")
     end
@@ -172,9 +168,7 @@ function M.open_subreddit(thing)
     if thing.kind == "more" then
         return
     end
-    vim.async.run(function()
-        buffer.open(thing.data.subreddit_name_prefixed)
-    end):raise_on_error()
+    buffer.open(thing.data.subreddit_name_prefixed)
 end
 
 ---@param thing NvimReddit.Selectable
@@ -186,9 +180,7 @@ function M.open_user(thing)
         print("Cannot go to deleted user's profile")
         return
     end
-    vim.async.run(function()
-        buffer.open("user/" .. thing.data.author)
-    end):raise_on_error()
+    buffer.open("user/" .. thing.data.author)
 end
 
 ---@param thing NvimReddit.Selectable
@@ -226,19 +218,6 @@ local function gallery_nav(thing, reddit_buf, dir)
     end
 
     local url = expand.get_best_image_resolution_url(media)
-
-    ---@type Image|nil
-    ---@diagnostic disable-next-line: param-type-mismatch, assign-type-mismatch -- luals is not very smart
-    local image = vim.async.await(3, image_api.from_url, url, {
-        buffer = reddit_buf.buffer,
-        window = vim.api.nvim_get_current_win(),
-        with_virtual_padding = true,
-    })
-    if image == nil then
-        print("image was nil?!?!")
-        return
-    end
-    expand.watch_image_extmark(image)
 
     local margin = config.spacing.score_margin + 1
     local margin_string = (" "):rep(margin)
@@ -291,13 +270,6 @@ local function gallery_nav(thing, reddit_buf, dir)
         priority = 50,
     })
 
-    reddit_buf.images[thing.data.id]:clear()
-    reddit_buf.images[thing.data.id] = image
-    reddit_buf.images[thing.data.id]:render({
-        y = thing_mark_end,
-        x = margin,
-    })
-
     if media.e == "AnimatedImage" and config.use_gif_player then
         ---@type string[]
         local player_args = {}
@@ -305,22 +277,39 @@ local function gallery_nav(thing, reddit_buf, dir)
         table.insert(player_args, media.s.mp4)
         thing.player_job = vim.system(player_args, nil, config.player_onexit)
     end
+
+    reddit_buf.images[thing.data.id]:clear()
+    image_api.from_url(
+        url,
+        {
+        buffer = reddit_buf.buffer,
+            window = vim.api.nvim_get_current_win(),
+            with_virtual_padding = true,
+            x = margin,
+            y = thing_mark_end,
+        },
+        function(image)
+            if not image then
+                print("Failed to load image")
+                return
+            end
+            expand.watch_image_extmark(image)
+            reddit_buf.images[thing.data.id] = image
+            image:render()
+        end
+    )
 end
 
 ---@param thing NvimReddit.Selectable
 ---@param reddit_buf NvimReddit.Buffer
 function M.gallery_next(thing, reddit_buf)
-    vim.async.run(function()
-        gallery_nav(thing, reddit_buf, 1)
-    end):raise_on_error()
+    gallery_nav(thing, reddit_buf, 1)
 end
 
 ---@param thing NvimReddit.Selectable
 ---@param reddit_buf NvimReddit.Buffer
 function M.gallery_prev(thing, reddit_buf)
-    vim.async.run(function()
-        gallery_nav(thing, reddit_buf, -1)
-    end):raise_on_error()
+    gallery_nav(thing, reddit_buf, -1)
 end
 
 ---@param thing NvimReddit.Selectable
@@ -329,9 +318,7 @@ function M.open_domain(thing)
         print("not a link")
         return
     end
-    vim.async.run(function()
-        buffer.open(thing.domain_url)
-    end):raise_on_error()
+    buffer.open(thing.domain_url)
 end
 
 ---@param thing NvimReddit.Selectable
@@ -350,9 +337,7 @@ function M.open_context(thing)
         print("not a comment")
         return
     end
-    vim.async.run(function()
-        buffer.open(thing.data.permalink:sub(2) .. "?context=3")
-    end):raise_on_error()
+    buffer.open(thing.data.permalink:sub(2) .. "?context=3")
 end
 
 ---@param thing NvimReddit.Selectable
@@ -361,26 +346,18 @@ function M.open_full_context(thing)
         print("not a comment")
         return
     end
-    vim.async.run(function()
-        buffer.open(thing.data.permalink:sub(2) .. "?context=10000")
-    end):raise_on_error()
+    buffer.open(thing.data.permalink:sub(2) .. "?context=10000")
 end
 
 ---@param more NvimReddit.More
 ---@param reddit_buf NvimReddit.Buffer
 local function load_more(more, reddit_buf)
-    vim.async.run(function()
-        ---@type NvimReddit.FetchResponse, NvimReddit.RedditError|nil
-        local response, err = vim.async.await(---@diagnostic disable-line: assign-type-mismatch
-            3,
-            state.reddit.fetch,
-            state.reddit, ---@diagnostic disable-line: param-type-mismatch
-            "api/morechildren?api_type=json&children=" .. table.concat(more.data.children, ",") .. "&link_id=" .. more.link_id .. "&raw_json=1"
-        )
+    coroutine.wrap(function()
+        local response, err = state.reddit:fetch("api/morechildren?api_type=json&children=" .. table.concat(more.data.children, ",") .. "&link_id=" .. more.link_id .. "&raw_json=1")
         if err then
             vim.print(err)
             return
-        end
+        end ---@cast response -?
         ---@type table<string, NvimReddit.Comment|NvimReddit.Listing>
         local id_cache = {}
         if more.parent.kind == "t1" then
@@ -501,7 +478,7 @@ local function load_more(more, reddit_buf)
             util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, start_line, end_line)
             vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
         end)
-    end):raise_on_error()
+    end)()
 end
 
 ---@param thing NvimReddit.Selectable
@@ -509,9 +486,8 @@ end
 function M.enter(thing, reddit_buf)
     if thing.kind == "more" then
         if thing.data.count == 0 then
-            vim.async.run(function()
-                buffer.open(thing.parent.data.permalink:sub(2))
-            end):raise_on_error()
+            -- "continue this thread"
+            buffer.open(thing.parent.data.permalink:sub(2))
         else
             load_more(thing, reddit_buf)
         end

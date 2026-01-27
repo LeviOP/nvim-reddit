@@ -2,8 +2,6 @@ require("nvim-reddit.highlights")
 local buffer = require("nvim-reddit.buffer")
 local config = require("nvim-reddit.config")
 
-vim.async = require("async")
-
 local M = {}
 
 local function setup_dev_icons()
@@ -34,9 +32,7 @@ function M.setup(options)
     end
 
     vim.api.nvim_create_user_command("Reddit", function(opts)
-        vim.async.run(function()
-            buffer.open(opts.args:gsub("%s+$", ""))
-        end):raise_on_error()
+        buffer.open(opts.args:gsub("%s+$", ""))
     end, { nargs = "?" })
 end
 

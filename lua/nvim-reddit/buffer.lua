@@ -21,178 +21,177 @@ local M = {}
 
 ---@param path string
 function M.open(path)
-    local buffer = vim.api.nvim_get_current_buf()
-    if vim.bo[buffer].modified or vim.api.nvim_buf_get_name(buffer) ~= "" then
-        buffer = vim.api.nvim_create_buf(true, true)
-    end
-    vim.api.nvim_set_option_value("filetype", "reddit", { buf = buffer })
-    vim.api.nvim_set_option_value("buftype", "nofile", { buf = buffer })
-    vim.api.nvim_set_option_value("swapfile", false, { buf = buffer })
-    vim.api.nvim_buf_set_name(buffer, "reddit://" .. path)
-
-    -- FIXME: window stuff should maybe be separate in the future (sidebar)
-    vim.api.nvim_set_option_value("foldmethod", "expr", { win = 0 })
-    vim.api.nvim_set_option_value("foldexpr", "v:lua.require'nvim-reddit.fold'.expr()", { win = 0 })
-    vim.api.nvim_set_option_value("foldtext", "v:lua.require'nvim-reddit.fold'.text()", { win = 0 })
-
-    vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {
-        "Loading..."
-    })
-    vim.api.nvim_set_option_value("modifiable", false, { buf = buffer })
-    vim.api.nvim_set_current_buf(buffer)
-
-    ---@type NvimReddit.Buffer
-    local reddit_buf = {
-        buffer = buffer,
-        mark_thing_map = {},
-        selected_mark_id = nil,
-        images = {},
-        foldlevels = {},
-        spoiler_marks_map = {},
-    }
-
-    state.buffers[buffer] = reddit_buf
-
-    vim.api.nvim_create_autocmd({"BufDelete"}, {
-        buffer = buffer,
-        callback = function()
-            state.buffers[buffer] = nil
-        end,
-    })
-
-    if state.reddit == nil then
-        local reddit_api_path = vim.fs.joinpath(config.data_dir, "api.json")
-        local reddit, err = config.setup_reddit(reddit_api_path, config.platform_resolver())
-        if err ~= nil then
-            print("Error loading Reddit API config:", err)
-            return
-        end ---@cast reddit -?
-        state.reddit = reddit
-    end
-
-    if state.reddit.token == nil then
-        ---@diagnostic disable-next-line: param-type-mismatch -- luals is not very smart
-        vim.async.await(2, state.reddit.get_access_token, state.reddit)
-    end
-
-    -- Maybe this isn't the best way to do things, but there's no reason
-    -- to parse all of the params correctly or anything if this works fine
-    if path:find("?") then
-        path = path .. "&raw_json=1"
-    else
-        path = path .. "?raw_json=1"
-    end
-
-    -- if I try to do this with disable-next-line, the type assertion just.. doesn't work. luals is really really really stupid
-    ---@type NvimReddit.FetchResponse, NvimReddit.RedditError|nil
-    local response, err = vim.async.await(3, state.reddit.fetch, state.reddit, path) ---@diagnostic disable-line: param-type-mismatch, assign-type-mismatch
-    if err then
-        vim.print(err)
-        return
-    end
-
-    ---@type string|nil
-    local newpath = response.location:match("^https://oauth%.reddit%.com/(.*)$")
-    if not newpath then
-        print("Couldn't get path from response location???", response.location)
-    elseif newpath ~= path then
-        path = newpath
-        vim.schedule(function ()
-            vim.api.nvim_buf_set_name(buffer, "reddit://" .. path)
-        end)
-    end
-
-    local endpoint = util.parse_reddit_endpoint(path)
-    -- it's nicer if we don't make the code (or user) deal with this
-    endpoint.params["raw_json"] = nil
-
-    vim.schedule(function()
-        vim.api.nvim_set_option_value("modifiable", true, { buf = buffer })
-        if endpoint.type == "listing" then
-            ---@type NvimReddit.Listing
-            local listing = response.data
-
-            local lines, marks, spoilers, things, foldlevels = render.listing(listing, endpoint)
-            util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, 0)
-        elseif endpoint.type == "article" then
-            ---@type NvimReddit.Listing
-            local link_listing = response.data[1]
-            ---@type NvimReddit.Listing
-            local comments = response.data[2]
-
-            local lines, marks, spoilers, things, foldlevels = render.listing(link_listing, endpoint)
-            util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, 0)
-
-            local c_lines, c_marks, c_spoilers, c_things, c_foldlevels = render.listing(comments, endpoint)
-            util.draw(reddit_buf, c_lines, c_marks, c_spoilers, c_things, c_foldlevels, #lines)
-        elseif endpoint.type == "about" then
-            if endpoint.user then
-                --- TODO: user endpoints (not user subreddit, maybe should be normalized)
-                vim.print("user info not supported")
-            else
-                ---@type NvimReddit.Subreddit
-                local subreddit = response.data
-                local lines, marks = render.sidebar(subreddit)
-                util.draw(reddit_buf, lines, marks, {}, {}, {}, 0)
-            end
+    coroutine.wrap(function()
+        local buffer = vim.api.nvim_get_current_buf()
+        if vim.bo[buffer].modified or vim.api.nvim_buf_get_name(buffer) ~= "" then
+            buffer = vim.api.nvim_create_buf(true, true)
         end
+        vim.api.nvim_set_option_value("filetype", "reddit", { buf = buffer })
+        vim.api.nvim_set_option_value("buftype", "nofile", { buf = buffer })
+        vim.api.nvim_set_option_value("swapfile", false, { buf = buffer })
+        vim.api.nvim_buf_set_name(buffer, "reddit://" .. path)
 
-        vim.api.nvim_set_option_value("modifiable", false, { buf = buffer })
-        vim.api.nvim_win_set_cursor(0, {1, 0})
+        -- FIXME: window stuff should maybe be separate in the future (sidebar)
+        vim.api.nvim_set_option_value("foldmethod", "expr", { win = 0 })
+        vim.api.nvim_set_option_value("foldexpr", "v:lua.require'nvim-reddit.fold'.expr()", { win = 0 })
+        vim.api.nvim_set_option_value("foldtext", "v:lua.require'nvim-reddit.fold'.text()", { win = 0 })
 
-        vim.api.nvim_create_autocmd({"CursorMoved"}, {
-            buffer = buffer,
-            callback = util.closure(M.cursor_moved, reddit_buf),
+        vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {
+            "Loading..."
         })
+        vim.api.nvim_set_option_value("modifiable", false, { buf = buffer })
+        vim.api.nvim_set_current_buf(buffer)
 
-        vim.api.nvim_create_autocmd({"BufWinEnter"}, {
+        ---@type NvimReddit.Buffer
+        local reddit_buf = {
+            buffer = buffer,
+            mark_thing_map = {},
+            selected_mark_id = nil,
+            images = {},
+            foldlevels = {},
+            spoiler_marks_map = {},
+        }
+
+        state.buffers[buffer] = reddit_buf
+
+        vim.api.nvim_create_autocmd({"BufDelete"}, {
             buffer = buffer,
             callback = function()
-                vim.schedule(function()
-                    for _, image in pairs(reddit_buf.images) do
-                        image:render()
-                    end
-                end)
+                state.buffers[buffer] = nil
             end,
         })
 
-        for _, keymap in ipairs(config.keymaps) do
-            vim.keymap.set(keymap[1], keymap[2], function ()
-                if reddit_buf.selected_mark_id == nil then
-                    return
-                end
-
-                local thing = reddit_buf.mark_thing_map[reddit_buf.selected_mark_id]
-                if thing == nil then
-                    print("dind't find thing from selected mark id???")
-                    return
-                end
-
-                keymap[3](thing, reddit_buf)
-            end, { buffer = buffer })
+        if state.reddit == nil then
+            local reddit_api_path = vim.fs.joinpath(config.data_dir, "api.json")
+            local reddit, err = config.setup_reddit(reddit_api_path, config.platform_resolver())
+            if err ~= nil then
+                print("Error loading Reddit API config:", err)
+                return
+            end ---@cast reddit -?
+            state.reddit = reddit
         end
 
-        if state.mode == "post" then
-            vim.keymap.set("n", "j", function()
-                state.jump(buffer, -1)
-            end, { buffer = buffer })
-            vim.keymap.set("n", "k", function()
-                state.jump(buffer, 1)
-            end, { buffer = buffer })
+        if state.reddit.token == nil then
+            state.reddit:get_access_token()
         end
 
+        -- Maybe this isn't the best way to do things, but there's no reason
+        -- to parse all of the params correctly or anything if this works fine
+        if path:find("?") then
+            path = path .. "&raw_json=1"
+        else
+            path = path .. "?raw_json=1"
+        end
 
-        if endpoint.type == "listing" then
-            ---@param dir "before"|"after"
-            local function listing_nav(dir)
-                ---@type string|vim.NIL
-                local from = response.data.data[dir]
-                if from == vim.NIL then
-                    print("There is nothing in this direction!")
-                    return
-                end ---@cast from -vim.NIL
-                vim.async.run(function()
+        local response, err = state.reddit:fetch(path)
+        if err then
+            vim.print(err)
+            return
+        end ---@cast response -?
+
+        ---@type string|nil
+        local newpath = response.location:match("^https://oauth%.reddit%.com/(.*)$")
+        if not newpath then
+            print("Couldn't get path from response location???", response.location)
+        elseif newpath ~= path then
+            path = newpath
+            vim.schedule(function ()
+                vim.api.nvim_buf_set_name(buffer, "reddit://" .. path)
+            end)
+        end
+
+        local endpoint = util.parse_reddit_endpoint(path)
+        -- it's nicer if we don't make the code (or user) deal with this
+        endpoint.params["raw_json"] = nil
+
+        vim.schedule(function()
+            vim.api.nvim_set_option_value("modifiable", true, { buf = buffer })
+            if endpoint.type == "listing" then
+                ---@type NvimReddit.Listing
+                local listing = response.data
+
+                local lines, marks, spoilers, things, foldlevels = render.listing(listing, endpoint)
+                util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, 0)
+            elseif endpoint.type == "article" then
+                ---@type NvimReddit.Listing
+                local link_listing = response.data[1]
+                ---@type NvimReddit.Listing
+                local comments = response.data[2]
+
+                local lines, marks, spoilers, things, foldlevels = render.listing(link_listing, endpoint)
+                util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, 0)
+
+                local c_lines, c_marks, c_spoilers, c_things, c_foldlevels = render.listing(comments, endpoint)
+                util.draw(reddit_buf, c_lines, c_marks, c_spoilers, c_things, c_foldlevels, #lines)
+            elseif endpoint.type == "about" then
+                if endpoint.user then
+                    --- TODO: user endpoints (not user subreddit, maybe should be normalized)
+                    vim.print("user info not supported")
+                else
+                    ---@type NvimReddit.Subreddit
+                    local subreddit = response.data
+                    local lines, marks = render.sidebar(subreddit)
+                    util.draw(reddit_buf, lines, marks, {}, {}, {}, 0)
+                end
+            end
+
+            vim.api.nvim_set_option_value("modifiable", false, { buf = buffer })
+            vim.api.nvim_win_set_cursor(0, {1, 0})
+
+            vim.api.nvim_create_autocmd({"CursorMoved"}, {
+                buffer = buffer,
+                callback = util.closure(M.cursor_moved, reddit_buf),
+            })
+
+            vim.api.nvim_create_autocmd({"BufWinEnter"}, {
+                buffer = buffer,
+                callback = function()
+                    vim.schedule(function()
+                        for _, image in pairs(reddit_buf.images) do
+                            image:render()
+                        end
+                    end)
+                end,
+            })
+
+            for _, keymap in ipairs(config.keymaps) do
+                vim.keymap.set(keymap[1], keymap[2], function ()
+                    if reddit_buf.selected_mark_id == nil then
+                        return
+                    end
+
+                    local thing = reddit_buf.mark_thing_map[reddit_buf.selected_mark_id]
+                    if thing == nil then
+                        print("dind't find thing from selected mark id???")
+                        return
+                    end
+
+                    keymap[3](thing, reddit_buf)
+                end, { buffer = buffer })
+            end
+
+            if state.mode == "post" then
+                vim.keymap.set("n", "j", function()
+                    state.jump(buffer, -1)
+                end, { buffer = buffer })
+                vim.keymap.set("n", "k", function()
+                    state.jump(buffer, 1)
+                end, { buffer = buffer })
+            end
+
+
+            if endpoint.type == "listing" then
+                ---@param dir "before"|"after"
+                local function listing_nav(dir)
+                    ---@type string|vim.NIL
+                    local from = response.data.data[dir]
+                    if from == vim.NIL then
+                        print("There is nothing in this direction!")
+                        return
+                    end ---@cast from -vim.NIL
+
                     local url = path:gsub("%?.*$", "")
+
                     endpoint.params.before = nil
                     endpoint.params.after = nil
                     -- the type annotation for tonumber() is incorrect -- it can take any type
@@ -208,79 +207,79 @@ function M.open(path)
                     end
                     url = url:sub(1, -2)
                     M.open(url)
-                end):raise_on_error()
-            end
-            vim.keymap.set("n", "gln", function()
-                listing_nav("after")
-            end, { buffer = buffer })
-            vim.keymap.set("n", "glp", function()
-                listing_nav("before")
-            end, { buffer = buffer })
-        end
-
-        vim.keymap.set("n", "i", function()
-            state.set_mode("post")
-        end, { buffer = buffer })
-
-        vim.keymap.set("n", "<Esc>", function()
-            state.set_mode("normal")
-        end, { buffer = buffer })
-
-
-        vim.keymap.set("n", "K" , function()
-            local cursor = vim.api.nvim_win_get_cursor(0);
-            local pos = { cursor[1] - 1, cursor[2] }
-            local spoiler_marks = vim.api.nvim_buf_get_extmarks(buffer, sns, pos, pos, { details = true, overlap = true })
-
-            local mark_count = #spoiler_marks
-            if mark_count == 0 then
-                return
-            elseif mark_count > 1 then
-                print("we found more than one spoiler under the cursor?")
-                return
+                end
+                vim.keymap.set("n", "gln", function()
+                    listing_nav("after")
+                end, { buffer = buffer })
+                vim.keymap.set("n", "glp", function()
+                    listing_nav("before")
+                end, { buffer = buffer })
             end
 
-            local found_spoiler_mark = spoiler_marks[1][1]
+            vim.keymap.set("n", "i", function()
+                state.set_mode("post")
+            end, { buffer = buffer })
 
-            local spoiler_id
-            for id, id_spoiler_marks in pairs(reddit_buf.spoiler_marks_map) do
-                for _, spoiler_mark in ipairs(id_spoiler_marks) do
-                    if spoiler_mark == found_spoiler_mark then
-                        spoiler_id = id
-                        goto found
+            vim.keymap.set("n", "<Esc>", function()
+                state.set_mode("normal")
+            end, { buffer = buffer })
+
+
+            vim.keymap.set("n", "K" , function()
+                local cursor = vim.api.nvim_win_get_cursor(0);
+                local pos = { cursor[1] - 1, cursor[2] }
+                local spoiler_marks = vim.api.nvim_buf_get_extmarks(buffer, sns, pos, pos, { details = true, overlap = true })
+
+                local mark_count = #spoiler_marks
+                if mark_count == 0 then
+                    return
+                elseif mark_count > 1 then
+                    print("we found more than one spoiler under the cursor?")
+                    return
+                end
+
+                local found_spoiler_mark = spoiler_marks[1][1]
+
+                local spoiler_id
+                for id, id_spoiler_marks in pairs(reddit_buf.spoiler_marks_map) do
+                    for _, spoiler_mark in ipairs(id_spoiler_marks) do
+                        if spoiler_mark == found_spoiler_mark then
+                            spoiler_id = id
+                            goto found
+                        end
                     end
                 end
-            end
-            if not spoiler_id then
-                print("We couldn't find a spoiler_id that included our found mark!")
-                return
-            end
-            ::found::
+                if not spoiler_id then
+                    print("We couldn't find a spoiler_id that included our found mark!")
+                    return
+                end
+                ::found::
 
-            for _, spoiler_mark in ipairs(reddit_buf.spoiler_marks_map[spoiler_id]) do
-                vim.api.nvim_buf_del_extmark(buffer, sns, spoiler_mark)
-            end
-            reddit_buf.spoiler_marks_map[spoiler_id] = nil
-        end, { buffer = buffer })
+                for _, spoiler_mark in ipairs(reddit_buf.spoiler_marks_map[spoiler_id]) do
+                    vim.api.nvim_buf_del_extmark(buffer, sns, spoiler_mark)
+                end
+                reddit_buf.spoiler_marks_map[spoiler_id] = nil
+            end, { buffer = buffer })
 
-        --- FIXME: add "dev" config option or something
-        vim.keymap.set("n", "gj", function()
-            local formatted = vim.fn.systemlist("jq .", response.rawdata)
-            if vim.v.shell_error ~= 0 then
-                vim.notify("Failed to format JSON with jq", vim.log.levels.ERROR)
-                return
-            end
+            --- FIXME: add "dev" config option or something
+            vim.keymap.set("n", "gj", function()
+                local formatted = vim.fn.systemlist("jq .", response.rawdata)
+                if vim.v.shell_error ~= 0 then
+                    vim.notify("Failed to format JSON with jq", vim.log.levels.ERROR)
+                    return
+                end
 
-            local buf = vim.api.nvim_create_buf(true, true)
-            vim.api.nvim_set_option_value("filetype", "json", { buf = buf })
-            vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
-            vim.api.nvim_set_option_value("swapfile", false, { buf = buf })
+                local buf = vim.api.nvim_create_buf(true, true)
+                vim.api.nvim_set_option_value("filetype", "json", { buf = buf })
+                vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
+                vim.api.nvim_set_option_value("swapfile", false, { buf = buf })
 
-            vim.api.nvim_buf_set_lines(buf, 0, -1, false, formatted)
+                vim.api.nvim_buf_set_lines(buf, 0, -1, false, formatted)
 
-            vim.api.nvim_set_current_buf(buf)
-        end, { buffer = buffer })
-    end)
+                vim.api.nvim_set_current_buf(buf)
+            end, { buffer = buffer })
+        end)
+    end)()
 end
 
 ---@param reddit_buf NvimReddit.Buffer

@@ -27,7 +27,6 @@ function M.jump(buffer, dir)
     local cur_row = cur_pos[1] - 1
     local thing_marks = vim.api.nvim_buf_get_extmarks(buffer, M.tns, {0, 0}, {-1, -1}, {})
 
-
     local closest_thing_mark
     local closest_row
     if dir == 1 then
@@ -47,9 +46,12 @@ function M.jump(buffer, dir)
             end
         end
     end
+
     if not closest_row then
         return
     end
+
+
     if config.post_mode_auto_open then
         local reddit_buf = M.buffers[buffer]
         local selected_mark = reddit_buf.selected_mark_id
@@ -74,19 +76,24 @@ function M.jump(buffer, dir)
         -- the start and end points aren't needed when closing
         expand.link(thing, reddit_buf, 0, 0)
 
-        local thing_mark_start, _, thing_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, M.tns, closest_thing_mark, { details = true }))
+        local thing_mark_start, _, thing_details = unpack(vim.api.nvim_buf_get_extmark_by_id(buffer, M.tns, closest_thing_mark, { details = true }))
+        local thing_end_row = thing_details.end_row
         -- if we close the last thing, the offset of the new thing is going to be different, so we update it
         closest_row = thing_mark_start
 
-        vim.fn.winrestview({ topline = thing_mark_start + 1 })
 
         if not new_thing.open then
-            vim.schedule(function()
-                expand.link(new_thing, reddit_buf, thing_mark_start, thing_details.end_row)
-            end)
+            expand.link(new_thing, reddit_buf, thing_mark_start, thing_end_row)
         end
 
         ::bail::
+    end
+
+    local _, _, thing_details = unpack(vim.api.nvim_buf_get_extmark_by_id(buffer, M.tns, closest_thing_mark, { details = true }))
+    local thing_end_row = thing_details.end_row
+    local info = vim.fn.getwininfo(vim.api.nvim_get_current_win())[1]
+    if thing_end_row > info.botline then
+        vim.fn.winrestview({ topline = thing_end_row - info.height + 1 })
     end
 
     vim.api.nvim_win_set_cursor(0, { closest_row + 1, cur_pos[2] })
