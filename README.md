@@ -15,7 +15,6 @@
 - show errors onscreen instead of printing (and use vim.notify)
 
 ### feature parity with old reddit
-- handle nsfw/spoiler links
 - support commenting (and posting)
 - handle crossposts
   - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
@@ -24,7 +23,6 @@
 - visibly indicate when post is archived
 - visibly indicate when post is locked
 - provide way to show inline images in post body
-- only show link with sticked text on subreddit
 - handle table element
 
 ### potential enhancements

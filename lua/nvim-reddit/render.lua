@@ -490,15 +490,15 @@ function M.link(thing)
             },
             {
                 "",
-                condition = link.stickied,
+                condition = link.stickied and not thing.show_subreddit,
                 marks = {{ hl_group = "RedditStickied" }}},
             -- apparently post titles are not santized on ingest, but at the client. there can be double spaces, newlines, etc.
             {
                 link.title:gsub("%s+", " "),
                 marks = {
                     { url = link.url },
-                    { hl_group = { "RedditStickied", condition = link.stickied } },
-                    { hl_group = { "RedditPinned", condition = link.stickied } },
+                    { hl_group = { "RedditStickied", condition = link.stickied and not thing.show_subreddit } },
+                    { hl_group = { "RedditPinned", condition = link.stickied and not thing.show_subreddit } },
                 },
             },
             {
@@ -546,27 +546,37 @@ function M.link(thing)
                 "announcment",
                 pre = "- ",
                 marks = {{ hl_group = "RedditStickied" }},
-                condition = link.stickied,
+                condition = link.stickied and not thing.show_subreddit,
             },
             {
                 "pinned",
                 pre = "- ",
                 marks = {{ hl_group = "RedditPinned" }},
-                condition = link.pinned,
+                condition = link.pinned and not thing.show_subreddit,
             },
         },
         {
             {
                 show_arrows and "󰜮" or " ",
                 padding = config.spacing.score_margin,
-                marks = {{ hl_group = { "RedditDownvoted", condition = link.likes == false } }}
+                marks = {{ hl_group = { "RedditDownvoted", condition = link.likes == false } }},
             },
             {
                 "[" .. (CONTENTS_ICON_MAP[thing.contents] or "?") .. "]",
-                condition = thing.contents ~= nil
+                condition = thing.contents ~= nil,
             },
             {
-                link.num_comments .. " comments",
+                "NSFW",
+                marks = {{ hl_group = "RedditNSFWTag" }},
+                condition = thing.data.over_18,
+            },
+            {
+                "SPOILER",
+                marks = {{ hl_group = "RedditSpoilerTag" }},
+                condition = thing.data.spoiler,
+            },
+            {
+                link.num_comments .. " comment" .. (link.num_comments ~= 1 and "s" or ""),
                 marks = {{ url = REDDIT_BASE .. link.permalink:sub(2) }},
             },
         },

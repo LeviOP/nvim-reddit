@@ -3,6 +3,16 @@ vim.api.nvim_set_hl(0, "RedditStickied", {
     bold = true,
 })
 
+vim.api.nvim_set_hl(0, "RedditNSFWTag", {
+    background = "#BF4040",
+    foreground = "#ffffff"
+})
+
+vim.api.nvim_set_hl(0, "RedditSpoilerTag", {
+    background = "#ff8200",
+    foreground = "#ffffff"
+})
+
 vim.api.nvim_set_hl(0, "RedditPinned", {
     foreground = "#008985",
     bold = true,
