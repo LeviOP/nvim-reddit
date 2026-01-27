@@ -31,8 +31,16 @@ function M.setup(options)
         setup_dev_icons()
     end
 
+    vim.api.nvim_create_autocmd("BufReadCmd", {
+        pattern = "reddit://*",
+        callback = function(args)
+            buffer.open(args.match:sub(10), args.buf)
+        end,
+    })
+
     vim.api.nvim_create_user_command("Reddit", function(opts)
-        buffer.open(opts.args:gsub("%s+$", ""))
+        local path = opts.args:gsub("%s+$", "")
+        buffer.open(path)
     end, { nargs = "?" })
 end
 

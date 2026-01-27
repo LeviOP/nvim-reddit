@@ -10,8 +10,6 @@
   - move refresh token into the correct place.. blehhh
   - type config defaults / optionals correctly
 - handle duplicate buffers
-  - maybe allow reloading?
-- make sure bottom of thing is visible in post mode (when "scrolling" down)
 - show errors onscreen instead of printing (and use vim.notify)
 
 ### feature parity with old reddit

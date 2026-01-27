@@ -20,22 +20,26 @@ local M = {}
 ---@field spoiler_marks_map table<integer, integer[]>
 
 ---@param path string
-function M.open(path)
+---@param buffer integer|nil
+function M.open(path, buffer)
     coroutine.wrap(function()
-        local buffer = vim.api.nvim_get_current_buf()
-        if vim.bo[buffer].modified or vim.api.nvim_buf_get_name(buffer) ~= "" then
-            buffer = vim.api.nvim_create_buf(true, true)
+        if not buffer then
+            buffer = vim.api.nvim_get_current_buf()
+            if vim.bo[buffer].modified or vim.api.nvim_buf_get_name(buffer) ~= "" then
+                buffer = vim.api.nvim_create_buf(true, true)
+            end
+            vim.api.nvim_buf_set_name(buffer, "reddit://" .. path)
         end
         vim.api.nvim_set_option_value("filetype", "reddit", { buf = buffer })
         vim.api.nvim_set_option_value("buftype", "nofile", { buf = buffer })
         vim.api.nvim_set_option_value("swapfile", false, { buf = buffer })
-        vim.api.nvim_buf_set_name(buffer, "reddit://" .. path)
 
         -- FIXME: window stuff should maybe be separate in the future (sidebar)
         vim.api.nvim_set_option_value("foldmethod", "expr", { win = 0 })
         vim.api.nvim_set_option_value("foldexpr", "v:lua.require'nvim-reddit.fold'.expr()", { win = 0 })
         vim.api.nvim_set_option_value("foldtext", "v:lua.require'nvim-reddit.fold'.text()", { win = 0 })
 
+        vim.api.nvim_set_option_value("modifiable", true, { buf = buffer })
         vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {
             "Loading..."
         })
@@ -52,14 +56,32 @@ function M.open(path)
             spoiler_marks_map = {},
         }
 
+        local needs_setup = true
+        if state.buffers[buffer] then
+            needs_setup = false
+        end
+
         state.buffers[buffer] = reddit_buf
 
-        vim.api.nvim_create_autocmd({"BufDelete"}, {
-            buffer = buffer,
-            callback = function()
-                state.buffers[buffer] = nil
-            end,
-        })
+        if needs_setup then
+            vim.api.nvim_create_autocmd("BufDelete", {
+                buffer = buffer,
+                callback = function()
+                    state.buffers[buffer] = nil
+                end,
+            })
+            vim.api.nvim_create_autocmd("BufUnload", {
+                buffer = buffer,
+                callback = function(args)
+                    -- this might be a little extra work because image.nvim already does this,
+                    -- but it probably isn't really any difference
+                    local reddit_buf = state.buffers[args.buf]
+                    for _, image in pairs(reddit_buf.images) do
+                        image:clear()
+                    end
+                end
+            })
+        end
 
         if state.reddit == nil then
             local reddit_api_path = vim.fs.joinpath(config.data_dir, "api.json")
@@ -138,45 +160,49 @@ function M.open(path)
             vim.api.nvim_set_option_value("modifiable", false, { buf = buffer })
             vim.api.nvim_win_set_cursor(0, {1, 0})
 
-            vim.api.nvim_create_autocmd({"CursorMoved"}, {
-                buffer = buffer,
-                callback = util.closure(M.cursor_moved, reddit_buf),
-            })
+            if needs_setup then
+                vim.api.nvim_create_autocmd("CursorMoved", {
+                    buffer = buffer,
+                    callback = M.cursor_moved,
+                })
 
-            vim.api.nvim_create_autocmd({"BufWinEnter"}, {
-                buffer = buffer,
-                callback = function()
-                    vim.schedule(function()
-                        for _, image in pairs(reddit_buf.images) do
-                            image:render()
+                vim.api.nvim_create_autocmd("BufWinEnter", {
+                    buffer = buffer,
+                    callback = function(args)
+                        vim.schedule(function()
+                            local reddit_buf = state.buffers[args.buf]
+                            for _, image in pairs(reddit_buf.images) do
+                                image:render()
+                            end
+                        end)
+                    end,
+                })
+
+                for _, keymap in ipairs(config.keymaps) do
+                    vim.keymap.set(keymap[1], keymap[2], function()
+                        local reddit_buf = state.buffers[vim.api.nvim_get_current_buf()]
+                        if reddit_buf.selected_mark_id == nil then
+                            return
                         end
-                    end)
-                end,
-            })
 
-            for _, keymap in ipairs(config.keymaps) do
-                vim.keymap.set(keymap[1], keymap[2], function ()
-                    if reddit_buf.selected_mark_id == nil then
-                        return
-                    end
+                        local thing = reddit_buf.mark_thing_map[reddit_buf.selected_mark_id]
+                        if thing == nil then
+                            print("didn't find thing from selected mark id???")
+                            return
+                        end
 
-                    local thing = reddit_buf.mark_thing_map[reddit_buf.selected_mark_id]
-                    if thing == nil then
-                        print("dind't find thing from selected mark id???")
-                        return
-                    end
+                        keymap[3](thing, reddit_buf)
+                    end, { buffer = buffer })
+                end
 
-                    keymap[3](thing, reddit_buf)
-                end, { buffer = buffer })
-            end
-
-            if state.mode == "post" then
-                vim.keymap.set("n", "j", function()
-                    state.jump(buffer, -1)
-                end, { buffer = buffer })
-                vim.keymap.set("n", "k", function()
-                    state.jump(buffer, 1)
-                end, { buffer = buffer })
+                if state.mode == "post" then
+                    vim.keymap.set("n", "j", function()
+                        state.jump(buffer, -1)
+                    end, { buffer = buffer })
+                    vim.keymap.set("n", "k", function()
+                        state.jump(buffer, 1)
+                    end, { buffer = buffer })
+                end
             end
 
 
@@ -225,7 +251,7 @@ function M.open(path)
             end, { buffer = buffer })
 
 
-            vim.keymap.set("n", "K" , function()
+            vim.keymap.set("n", "K", function()
                 local cursor = vim.api.nvim_win_get_cursor(0);
                 local pos = { cursor[1] - 1, cursor[2] }
                 local spoiler_marks = vim.api.nvim_buf_get_extmarks(buffer, sns, pos, pos, { details = true, overlap = true })
@@ -282,8 +308,9 @@ function M.open(path)
     end)()
 end
 
----@param reddit_buf NvimReddit.Buffer
-function M.cursor_moved(reddit_buf)
+---@param args vim.api.keyset.create_autocmd.callback_args
+function M.cursor_moved(args)
+    local reddit_buf = state.buffers[args.buf]
     local cursor = vim.api.nvim_win_get_cursor(0);
     local pos = { cursor[1] - 1, cursor[2] }
     local buf_marks = vim.api.nvim_buf_get_extmarks(reddit_buf.buffer, tns, pos, pos, { details = true, overlap = true })
