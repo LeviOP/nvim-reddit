@@ -91,11 +91,11 @@ function M.jump(buffer, dir)
 
     local _, _, thing_details = unpack(vim.api.nvim_buf_get_extmark_by_id(buffer, M.tns, closest_thing_mark, { details = true }))
     local thing_end_row = thing_details.end_row
-    local info = vim.fn.getwininfo(vim.api.nvim_get_current_win())[1]
-    if thing_end_row > info.botline then
-        vim.fn.winrestview({ topline = thing_end_row - info.height + 1 })
-    end
 
+    -- it's simpler to move the cursor to the bottom of the thing we're jumping
+    -- to than to calculate what the bottom of the window is and what we should
+    -- set the topline to to make it fit on screen accounting for folds
+    vim.api.nvim_win_set_cursor(0, { thing_end_row, cur_pos[2] })
     vim.api.nvim_win_set_cursor(0, { closest_row + 1, cur_pos[2] })
 end
 
