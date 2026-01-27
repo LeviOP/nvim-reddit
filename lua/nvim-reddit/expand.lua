@@ -48,12 +48,15 @@ function M.comment(thing, reddit_buf, thing_mark_start)
                     print("Failed to load image")
                     return
                 end
-                reddit_buf.images[thing.data.id] = image
-                if thing.open then
-                    vim.schedule(function()
+                vim.schedule(function()
+                    if thing.open then
+                        if reddit_buf.images[thing.data.id] then
+                            return
+                        end
+                        reddit_buf.images[thing.data.id] = image
                         image:render()
-                    end)
-                end
+                    end
+                end)
             end
         )
     else
@@ -63,10 +66,8 @@ function M.comment(thing, reddit_buf, thing_mark_start)
         end
         local image = reddit_buf.images[thing.data.id]
         if image then
+            image:clear()
             reddit_buf.images[thing.data.id] = nil
-            vim.schedule(function()
-                image:clear()
-            end)
         end
         thing.open = false
     end
@@ -94,42 +95,39 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
         local width = math.min(window_width, config.spacing.max_line_length) - margin
 
         if thing.contents == "image" then
-            -- FIXME: why are we checking for existing if we always nil set it before closing? (trying fix in comment expand)
-            if not reddit_buf.images[thing.data.id] then
-                local url
-                if thing.data.preview then
-                    if #thing.data.preview.images ~= 1 then
-                        print("More than one preview.images?", #thing.data.preview.images)
-                    end
-                    local preview = thing.data.preview.images[1]
-                    url = M.get_best_image_resolution_url(preview)
+            local url
+            if thing.data.preview then
+                if #thing.data.preview.images ~= 1 then
+                    print("More than one preview.images?", #thing.data.preview.images)
+                end
+                local preview = thing.data.preview.images[1]
+                url = M.get_best_image_resolution_url(preview)
 
-                    if config.use_gif_player then
-                        local player_url
-                        if preview.variants.mp4 then
-                            player_url = preview.variants.mp4.source.url
-                        elseif preview.variants.gif then
-                            player_url = preview.variants.gif.source.url
-                        end
-                        if player_url then
-                            ---@type string[]
-                            local player_args = {}
-                            for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
-                            table.insert(player_args, player_url)
-                            thing.player_job = vim.system(player_args, nil, config.player_onexit)
-                        end
+                if config.use_gif_player then
+                    local player_url
+                    if preview.variants.mp4 then
+                        player_url = preview.variants.mp4.source.url
+                    elseif preview.variants.gif then
+                        player_url = preview.variants.gif.source.url
+                    end
+                    if player_url then
+                        ---@type string[]
+                        local player_args = {}
+                        for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
+                        table.insert(player_args, player_url)
+                        thing.player_job = vim.system(player_args, nil, config.player_onexit)
                     end
                 end
-                if not url then
-                    url = thing.data.url_overridden_by_dest or thing.data.url
-                end
-
-                new_image = {
-                    url = url,
-                    x = margin,
-                    y = thing_mark_end - 1
-                }
             end
+            if not url then
+                url = thing.data.url_overridden_by_dest or thing.data.url
+            end
+
+            new_image = {
+                url = url,
+                x = margin,
+                y = thing_mark_end - 1
+            }
         elseif thing.contents == "hosted_video" then
             table.insert(lines, margin_string .. "<hosted:video>")
             line = line + 1
@@ -149,29 +147,27 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                 thing.gallery_selected = 1
             end
             local item = thing.data.gallery_data.items[thing.gallery_selected]
-            if not reddit_buf.images[thing.data.id] then
-                local media = thing.data.media_metadata[item.media_id]
-                if not media then
-                    print("Media was missing?")
-                    return
-                end
-
-                local url = M.get_best_image_resolution_url(media)
-
-                if media.e == "AnimatedImage" and config.use_gif_player then
-                    ---@type string[]
-                    local player_args = {}
-                    for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
-                    table.insert(player_args, media.s.mp4)
-                    thing.player_job = vim.system(player_args, nil, config.player_onexit)
-                end
-
-                new_image = {
-                    url = url,
-                    x = margin,
-                    y = thing_mark_end
-                }
+            local media = thing.data.media_metadata[item.media_id]
+            if not media then
+                print("Media was missing?")
+                return
             end
+
+            local url = M.get_best_image_resolution_url(media)
+
+            if media.e == "AnimatedImage" and config.use_gif_player then
+                ---@type string[]
+                local player_args = {}
+                for i, arg in ipairs(config.gif_player_options) do player_args[i] = arg end
+                table.insert(player_args, media.s.mp4)
+                thing.player_job = vim.system(player_args, nil, config.player_onexit)
+            end
+
+            new_image = {
+                url = url,
+                x = margin,
+                y = thing_mark_end
+            }
 
             table.insert(lines, margin_string .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items)
             line = line + 1
@@ -284,36 +280,38 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                         print("Failed to load image")
                         return
                     end
-                    reddit_buf.images[thing.data.id] = image
-                    M.watch_image_extmark(image)
-                    if thing.open then
+                    -- have to vim.schedule this or else rendering will mess up setting topline
                     vim.schedule(function()
-                        image:render()
+                        if thing.open then
+                            -- there is already an image there, this must have started loading when something else was also loading
+                            if reddit_buf.images[thing.data.id] then
+                                return
+                            end
+                            M.watch_image_extmark(image)
+                            reddit_buf.images[thing.data.id] = image
+                            image:render()
+                        end
                     end)
-                    end
                 end
             )
         end
     else -- closing
-        thing.open = false
         if thing.player_job then
             thing.player_job:kill("sigterm")
             thing.player_job = nil
         end
 
-        vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
-
         local image = reddit_buf.images[thing.data.id]
         if image then
+            image:clear()
             reddit_buf.images[thing.data.id] = nil
-            vim.schedule(function()
-                image:clear()
-            end)
         end
         if thing.expando_mark then
             local row, _, expando_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, ns, thing.expando_mark, { details = true }))
 
             util.array_remove_range(reddit_buf.foldlevels, row + 1, expando_details.end_row)
+
+            vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
 
             -- HACK: for some reason when an image is added (or maybe removed?) after
             -- the post is re-rendered due to voting, the end_row of the mark is set to 0
@@ -324,9 +322,11 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                     vim.api.nvim_win_set_cursor(0, { row, cursor[2] })
                 end
             end
+            vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
         end
 
-        vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+
+        thing.open = false
     end
 end
 

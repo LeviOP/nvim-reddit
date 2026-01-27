@@ -15,7 +15,6 @@
 - show errors onscreen instead of printing (and use vim.notify)
 
 ### feature parity with old reddit
-- fix more comments loading (somehow broken)
 - handle nsfw/spoiler links
 - support commenting (and posting)
 - handle crossposts
