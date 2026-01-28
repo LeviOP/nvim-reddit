@@ -281,11 +281,16 @@ local function gallery_nav(thing, reddit_buf, dir)
         thing.player_job = vim.system(player_args, nil, config.player_onexit)
     end
 
-    reddit_buf.images[thing.data.id]:clear()
+    local existing_image = reddit_buf.images[thing.data.id]
+    if existing_image then
+        existing_image:clear()
+        reddit_buf.images[thing.data.id] = nil
+    end
+
     image_api.from_url(
         url,
         {
-        buffer = reddit_buf.buffer,
+            buffer = reddit_buf.buffer,
             window = vim.api.nvim_get_current_win(),
             with_virtual_padding = true,
             x = margin,
@@ -296,9 +301,17 @@ local function gallery_nav(thing, reddit_buf, dir)
                 print("Failed to load image")
                 return
             end
-            expand.watch_image_extmark(image)
-            reddit_buf.images[thing.data.id] = image
-            image:render()
+            vim.schedule(function()
+                if thing.open then
+                    -- there is already an image there, this must have started loading when something else was also loading
+                    if reddit_buf.images[thing.data.id] then
+                        return
+                    end
+                    expand.watch_image_extmark(image)
+                    reddit_buf.images[thing.data.id] = image
+                    image:render()
+                end
+            end)
         end
     )
 end

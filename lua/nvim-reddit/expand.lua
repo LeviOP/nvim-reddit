@@ -194,7 +194,6 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                 y = thing_mark_end + line
             }
 
-
             table.insert(lines, margin_string .. thing.gallery_selected .. " of " .. #contents_data.gallery_data.items)
             line = line + 1
 
