@@ -1023,7 +1023,10 @@ function M.listing(listing, endpoint)
 
             local contents_data = thing.contents_data ---@cast contents_data -?
 
-            if contents_data.is_self then
+            local hint = contents_data.post_hint
+            if hint and hint == "link" then
+                thing.contents = "link"
+            elseif contents_data.is_self then
                 if contents_data.selftext_html ~= vim.NIL then
                     thing.contents = "selftext"
                 end
