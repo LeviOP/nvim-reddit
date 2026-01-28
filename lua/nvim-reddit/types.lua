@@ -34,13 +34,16 @@
 ---@class (exact) NvimReddit.Link
 ---@field data NvimReddit.LinkData
 ---@field kind "t3"
----@field contents NvimReddit.LinkContents
+---@field crosspost boolean|nil
+---@field contents NvimReddit.LinkContents|nil
+---@field contents_data NvimReddit.LinkData|nil
 ---@field show_subreddit boolean|nil
 ---@field parsed NvimReddit.Block[]|nil
 ---@field expando_mark integer|nil
 ---@field open boolean|nil
 ---@field domain_url string|nil
 ---@field gallery_selected integer|nil
+---@field gallery_offset integer|nil
 ---@field gallery_item_line_count integer|nil
 ---@field player_job vim.SystemObj|nil
 ---@field mark integer|nil
@@ -94,6 +97,7 @@
 ---@field treatment_tags any[]
 ---@field banned_by null
 ---@field mod_note null
+---@field crosspost_parent_list? NvimReddit.LinkData[]
 ---@field link_flair_text_color NvimReddit.FlairTextColor
 ---@field mod_reports any[]
 ---@field allow_live_comments boolean

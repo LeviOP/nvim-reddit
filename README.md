@@ -14,8 +14,6 @@
 
 ### feature parity with old reddit
 - support commenting (and posting)
-- handle crossposts
-  - crossposts will have post_hint as link sometimes, apparently (maybe all the time on main page?)
 - handle rich:video and similar
 - support contest mode
 - visibly indicate when post is archived

@@ -472,6 +472,14 @@ function M.link(thing)
         author_flair_foreground, author_flair_background = get_flair_hl(link.subreddit, author_flair_text, link.author_flair_text_color, link.author_flair_background_color)
     end
 
+    ---@type string|nil
+    local icon
+    if thing.crosspost and (thing.contents == "selftext" or thing.contents == nil) then
+        icon = CONTENTS_ICON_MAP["crosspost"] or "?"
+    elseif thing.contents then
+        icon = CONTENTS_ICON_MAP[thing.contents] or "?"
+    end
+
     ---@type NvimReddit.Line[]
     local lines = {
         {
@@ -507,6 +515,10 @@ function M.link(thing)
                 post = ")",
                 marks = {{ hl_group = "RedditAnchor", url = { REDDIT_BASE .. thing.domain_url, condition = thing.domain_url ~= "" } }},
             },
+            {
+                "󰘬",
+                condition = thing.crosspost
+            }
         },
         {
             {
@@ -562,8 +574,8 @@ function M.link(thing)
                 marks = {{ hl_group = { "RedditDownvoted", condition = link.likes == false } }},
             },
             {
-                "[" .. (CONTENTS_ICON_MAP[thing.contents] or "?") .. "]",
-                condition = thing.contents ~= nil,
+                "[" .. icon .. "]",
+                condition = icon ~= nil,
             },
             {
                 "NSFW",
@@ -599,6 +611,51 @@ function M.link(thing)
     end
 
     return rendered_lines, marks, spoilers, things, foldlevels
+end
+
+---@param link NvimReddit.LinkData
+---@return string[], NvimReddit.Mark[]
+function M.crosspost_header(link)
+    local lines = {
+        {
+            link.title
+        },
+        {
+            {
+                link.score .. " point" .. (link.score == 1 and "" or "s"),
+                marks = {{ hl_group = "RedditSecondary" }}
+            },
+            "•",
+            {
+                link.num_comments .. " comment" .. (link.num_comments ~= 1 and "s" or ""),
+                marks = {{ url = REDDIT_BASE .. link.permalink:sub(2), hl_group = "RedditAnchor" }},
+            },
+            "•",
+            {
+                "submitted " .. util.time_ago(link.created) .. " by",
+                marks = {{ hl_group = "RedditSecondary" }}
+            },
+            {
+                link.author,
+                marks = {
+                    { hl_group = { "RedditAnchor", condition = link.author ~= "[deleted]" }, url = { REDDIT_BASE .. "user/" .. link.author, condition = link.author ~= "[deleted]" } },
+                    { hl_group = { "RedditModerator", condition = link.distinguished == "moderator" } },
+                    { hl_group = { "RedditAdmin", condition = link.distinguished == "admin" } },
+                },
+            },
+            {
+                "to",
+                marks = {{ hl_group = "RedditSecondary" }}
+            },
+            {
+                link.subreddit_name_prefixed,
+                marks = {{ hl_group = "RedditAnchor", url = REDDIT_BASE .. link.subreddit_name_prefixed }},
+            },
+        },
+    }
+
+    local rendered_lines, marks = M.lines(lines)
+    return rendered_lines, marks
 end
 
 ---@param thing NvimReddit.Comment
@@ -956,44 +1013,39 @@ function M.listing(listing, endpoint)
             end
             thing.show_subreddit = endpoint.subreddit ~= thing.data.subreddit:lower()
 
-            local hint = thing.data.post_hint
-            if hint then
-                if hint == "image" then
-                    thing.contents = "image"
-                elseif hint == "link" then
-                    thing.contents = "link"
-                elseif hint == "self" then
-                    thing.contents = "selftext"
-                elseif hint == "hosted:video" then
-                    thing.contents = "hosted_video"
-                elseif hint == "rich:video" then
-                    thing.contents = "rich_video"
-                else
-                    print("Unhandled hint type?", hint)
-                end
-            elseif thing.data.is_self then
-                if thing.data.selftext_html ~= vim.NIL then
+            if thing.data.crosspost_parent then
+                thing.contents_data = thing.data.crosspost_parent_list[1]
+                thing.crosspost = true
+            else
+                thing.contents_data = thing.data
+                thing.crosspost = false
+            end
+
+            local contents_data = thing.contents_data ---@cast contents_data -?
+
+            if contents_data.is_self then
+                if contents_data.selftext_html ~= vim.NIL then
                     thing.contents = "selftext"
                 end
                 -- If is_self is true but there is no selftext, it's a
                 -- title-only post with no body
-            elseif thing.data.is_gallery then
+            elseif contents_data.is_gallery then
                 thing.contents = "gallery"
-            elseif thing.data.secure_media ~= vim.NIL then
-                if thing.data.secure_media.reddit_video then
+            elseif contents_data.secure_media ~= vim.NIL then
+                if contents_data.secure_media.reddit_video then
                     thing.contents = "hosted_video"
-                elseif thing.data.secure_media.oembed then
+                elseif contents_data.secure_media.oembed then
                     thing.contents = "rich_video"
                 else
-                    vim.print("unknown media type?", thing.data.secure_media)
+                    vim.print("unknown media type?", contents_data.secure_media)
                 end
-            elseif thing.data.crosspost_parent then
-                thing.contents = "crosspost"
-            elseif thing.data.selftext_html ~= vim.NIL then
+            elseif contents_data.selftext_html ~= vim.NIL then
                 thing.contents = "selftext"
+            elseif contents_data.preview then
+                thing.contents = "image"
             else
                 thing.contents = "link"
-                print("assuming this is a link:", thing.data.title)
+                print("assuming this is a link:", contents_data.title)
             end
 
             thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels = M.link(thing)

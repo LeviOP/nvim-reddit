@@ -94,13 +94,36 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
         local window_width = util.get_window_text_width(0)
         local width = math.min(window_width, config.spacing.max_line_length) - margin
 
+        local contents_data = thing.contents_data ---@cast contents_data -?
+        if thing.crosspost then
+            local header_lines, header_marks = render.crosspost_header(contents_data)
+            for _, header_line in ipairs(header_lines) do
+                table.insert(lines, margin_string .. header_line)
+            end
+
+            for _, mark in ipairs(header_marks) do
+                if mark.details.virt_text_win_col then
+                    mark.details.virt_text_win_col = mark.details.virt_text_win_col + margin
+                    if mark.start_col == mark.end_col then
+                        goto add
+                    end
+                end
+                mark.line = mark.line + line
+                mark.start_col = mark.start_col + margin
+                mark.end_col = mark.end_col + margin
+                ::add::
+                table.insert(marks, mark)
+            end
+            line = line + #header_lines
+        end
+
         if thing.contents == "image" then
             local url
-            if thing.data.preview then
-                if #thing.data.preview.images ~= 1 then
-                    print("More than one preview.images?", #thing.data.preview.images)
+            if contents_data.preview then
+                if #contents_data.preview.images ~= 1 then
+                    print("More than one preview.images?", #contents_data.preview.images)
                 end
-                local preview = thing.data.preview.images[1]
+                local preview = contents_data.preview.images[1]
                 url = M.get_best_image_resolution_url(preview)
 
                 if config.use_gif_player then
@@ -120,7 +143,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                 end
             end
             if not url then
-                url = thing.data.url_overridden_by_dest or thing.data.url
+                url = contents_data.url_overridden_by_dest or contents_data.url
             end
 
             new_image = {
@@ -134,7 +157,7 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
             ---@type string[]
             local player_args = {}
             for i, arg in ipairs(config.player_options) do player_args[i] = arg end
-            table.insert(player_args, thing.data.secure_media.reddit_video.dash_url)
+            table.insert(player_args, contents_data.secure_media.reddit_video.dash_url)
             thing.player_job = vim.system(player_args, nil, config.player_onexit)
         elseif thing.contents == "rich_video" then
             table.insert(lines, margin_string .. "<rich:video>")
@@ -146,8 +169,8 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
             if not thing.gallery_selected then
                 thing.gallery_selected = 1
             end
-            local item = thing.data.gallery_data.items[thing.gallery_selected]
-            local media = thing.data.media_metadata[item.media_id]
+            local item = contents_data.gallery_data.items[thing.gallery_selected]
+            local media = contents_data.media_metadata[item.media_id]
             if not media then
                 print("Media was missing?")
                 return
@@ -163,13 +186,16 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                 thing.player_job = vim.system(player_args, nil, config.player_onexit)
             end
 
+            thing.gallery_offset = line
+
             new_image = {
                 url = url,
                 x = margin,
-                y = thing_mark_end
+                y = thing_mark_end + line
             }
 
-            table.insert(lines, margin_string .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items)
+
+            table.insert(lines, margin_string .. thing.gallery_selected .. " of " .. #contents_data.gallery_data.items)
             line = line + 1
 
             local item_lines = 0
@@ -196,12 +222,9 @@ function M.link(thing, reddit_buf, thing_mark_start, thing_mark_end)
                 line = line + 1
             end
             thing.gallery_item_line_count = item_lines
-        elseif thing.contents == "crosspost" then
-            table.insert(lines, margin_string .. "<crosspost>")
-            line = line + 1
         end
 
-        local selftext_html = thing.data.selftext_html
+        local selftext_html = contents_data.selftext_html
         if selftext_html ~= vim.NIL then ---@cast selftext_html -vim.NIL -- why can't luals figure this out???
             if thing.parsed == nil then
                 local blocks = html.parse_md(selftext_html)

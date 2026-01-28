@@ -187,7 +187,7 @@ end
 ---@param reddit_buf NvimReddit.Buffer
 ---@param dir -1|1
 local function gallery_nav(thing, reddit_buf, dir)
-    if thing.kind ~= "t3" or not thing.data.is_gallery or not thing.open then
+    if thing.kind ~= "t3" or not thing.contents_data.is_gallery or not thing.open then
         print("This is not an open gallery")
         return
     end
@@ -197,12 +197,7 @@ local function gallery_nav(thing, reddit_buf, dir)
         thing.player_job = nil
     end
 
-    ---@type integer, _, vim.api.keyset.extmark_details
-    local _, _, thing_mark_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true }))
-    local thing_mark_end = thing_mark_details.end_row
-    ---@cast thing_mark_end -? -- we always set it with an end_row so
-
-    local last = #thing.data.gallery_data.items
+    local last = #thing.contents_data.gallery_data.items
     thing.gallery_selected = thing.gallery_selected + dir
     if thing.gallery_selected == 0 then
         thing.gallery_selected = last
@@ -210,8 +205,8 @@ local function gallery_nav(thing, reddit_buf, dir)
         thing.gallery_selected = 1
     end
 
-    local item = thing.data.gallery_data.items[thing.gallery_selected]
-    local media = thing.data.media_metadata[item.media_id]
+    local item = thing.contents_data.gallery_data.items[thing.gallery_selected]
+    local media = thing.contents_data.media_metadata[item.media_id]
     if not media then
         print("Media was missing?")
         return
@@ -225,7 +220,7 @@ local function gallery_nav(thing, reddit_buf, dir)
     local window_width = util.get_window_text_width(0)
     local width = math.min(window_width, config.spacing.max_line_length) - margin
 
-    local lines = {margin_string .. thing.gallery_selected .. " of " .. #thing.data.gallery_data.items}
+    local lines = {margin_string .. thing.gallery_selected .. " of " .. #thing.contents_data.gallery_data.items}
 
     local item_line_count = 0
     if item.caption then
@@ -235,10 +230,18 @@ local function gallery_nav(thing, reddit_buf, dir)
         end
         item_line_count = #caption_lines
     end
+
+    ---@type integer, _, vim.api.keyset.extmark_details
+    local _, _, thing_mark_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true }))
+    local thing_mark_end = thing_mark_details.end_row
+    ---@cast thing_mark_end -? -- we always set it with an end_row so
+
+    local gallery_line = thing.gallery_offset + thing_mark_end
+
     local url_line
     if item.outbound_url then
         table.insert(lines, margin_string .. item.outbound_url)
-        url_line = thing_mark_end + item_line_count + 1
+        url_line = gallery_line + item_line_count + 1
         item_line_count = item_line_count + 1
     end
 
@@ -247,7 +250,7 @@ local function gallery_nav(thing, reddit_buf, dir)
     local row, _, expando_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, ns, thing.expando_mark, { details = true }))
 
     vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
-    vim.api.nvim_buf_set_lines(reddit_buf.buffer, thing_mark_end, thing_mark_end + thing.gallery_item_line_count + 1, false, lines)
+    vim.api.nvim_buf_set_lines(reddit_buf.buffer, gallery_line, gallery_line + thing.gallery_item_line_count + 1, false, lines)
     vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
 
     if item.outbound_url then
@@ -286,7 +289,7 @@ local function gallery_nav(thing, reddit_buf, dir)
             window = vim.api.nvim_get_current_win(),
             with_virtual_padding = true,
             x = margin,
-            y = thing_mark_end,
+            y = gallery_line,
         },
         function(image)
             if not image then
