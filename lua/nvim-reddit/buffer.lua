@@ -20,6 +20,7 @@ local M = {}
 --- 1-indexed
 ---@field foldlevels NvimReddit.FoldLevels
 ---@field spoiler_marks_map table<integer, integer[]>
+---@field endpoint_type NvimReddit.EndpointType|nil
 
 ---@param path string
 ---@param buffer integer|nil
@@ -127,6 +128,8 @@ function M.open(path, buffer)
         -- it's nicer if we don't make the code (or user) deal with this
         endpoint.params["raw_json"] = nil
 
+        reddit_buf.endpoint_type = endpoint.type
+
         vim.schedule(function()
             vim.api.nvim_set_option_value("modifiable", true, { buf = buffer })
             if endpoint.type == "listing" then
@@ -140,6 +143,8 @@ function M.open(path, buffer)
                 local link_listing = response.data[1]
                 ---@type NvimReddit.Listing
                 local comments = response.data[2]
+
+                link_listing.data.children[1].comments_listing = comments
 
                 local lines, marks, spoilers, things, foldlevels = render.listing(link_listing, endpoint)
                 util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, 0)

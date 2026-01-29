@@ -34,6 +34,9 @@ function Float.new(reddit_buf, row, col, replying_to)
 
     local buffer = vim.api.nvim_create_buf(config.reply.float.listed, config.reply.float.scratch)
 
+    vim.api.nvim_set_option_value("buftype", "nofile", { buf = buffer })
+    vim.api.nvim_set_option_value("swapfile", false, { buf = buffer })
+
     local parent_window = vim.api.nvim_get_current_win()
     vim.keymap.set("n", "<Esc>", function()
         vim.api.nvim_set_current_win(parent_window)

@@ -53,6 +53,7 @@
 ---@field player_job vim.SystemObj|nil
 ---@field mark integer|nil
 ---@field reply_float NvimReddit.Float|nil
+---@field comments_listing NvimReddit.Listing|nil
 
 ---@alias NvimReddit.LinkContents
 ---|"image"
@@ -492,6 +493,7 @@
 ---@field id string
 ---@field name string
 ---@field parent_id string
+---@field mark integer|nil
 
 ---@class (exact) NvimReddit.Me
 ---@field is_employee boolean

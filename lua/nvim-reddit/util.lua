@@ -263,6 +263,117 @@ function M.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, start_li
     end
 end
 
+---@param top_parent NvimReddit.Comment|NvimReddit.Listing
+---@param appended_things (NvimReddit.Comment|NvimReddit.More)[]
+---@param remove_trailing boolean
+---@return string[], NvimReddit.Mark[], NvimReddit.Spoiler[], NvimReddit.ThingMark[], NvimReddit.FoldLevels
+function M.render_appended_things(top_parent, appended_things, foldlevel, remove_trailing)
+    ---@type table<string, NvimReddit.Comment|NvimReddit.Listing>
+    local id_cache = {}
+    if top_parent.kind == "t1" then
+        id_cache["t1_" .. top_parent.data.id] = top_parent
+    else
+        id_cache[top_parent.data.children[1].data.link_id] = top_parent
+    end
+    ---@type (NvimReddit.Comment|NvimReddit.More)[]
+    local base_things = {}
+
+    for _, thing in ipairs(appended_things) do
+        local parent = id_cache[thing.data.parent_id]
+        if parent == nil then
+            print("couldn't find parent?????")
+            goto continue
+        end
+
+        if parent.kind == "t1" then
+            if parent.data.replies == "" then
+                parent.data.replies = {
+                    kind = "Listing",
+                    data = {
+                        children = {},
+                        after = vim.NIL,
+                        before = vim.NIL,
+                        dist = vim.NIL,
+                    }
+                }
+            end
+            table.insert(parent.data.replies.data.children, thing)
+            if parent == top_parent then
+                thing.padding = parent.padding + 2
+                table.insert(base_things, thing)
+            end
+        else
+            thing.padding = 0
+            table.insert(parent.data.children, thing)
+            table.insert(base_things, thing)
+            if thing.kind == "more" then
+                thing.link_id = thing.data.parent_id
+                -- this should always be at the end of the array but why not calculate things to be sure? :-)
+                thing.self_index = #parent.data.children
+                thing.parent = parent
+            end
+        end
+        -- we don't need to cache mores because they can't have children
+        if thing.kind == "t1" then
+            id_cache["t1_" .. thing.data.id] = thing
+        end
+
+        ::continue::
+    end
+
+    local render = require("nvim-reddit.render")
+
+    ---@type string[]
+    local lines = {}
+    ---@type NvimReddit.Mark[]
+    local marks = {}
+    ---@type NvimReddit.Spoiler[]
+    local spoilers = {}
+    ---@type NvimReddit.ThingMark[]
+    local things = {}
+    ---@type NvimReddit.FoldLevels
+    local foldlevels = {}
+    local line = 0
+    for _, thing in ipairs(base_things) do
+        local thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels
+        if thing.kind == "t1" then
+            thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels = render.comment(thing, true)
+        else
+            thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels = render.more(thing)
+        end
+        for _, thing_line in ipairs(thing_lines) do
+            table.insert(lines, thing_line)
+        end
+        for _, style_mark in ipairs(thing_style_marks) do
+            style_mark.line = style_mark.line + line
+            table.insert(marks, style_mark)
+        end
+        for _, spoiler in ipairs(thing_spoilers) do
+            spoiler.line = spoiler.line + line
+            table.insert(spoilers, spoiler)
+        end
+        for _, thing_mark in ipairs(thing_marks) do
+            thing_mark.start_line = thing_mark.start_line + line
+            table.insert(things, thing_mark)
+        end
+        for _, thing_foldlevel in ipairs(thing_foldlevels) do
+            table.insert(foldlevels, thing_foldlevel)
+        end
+        line = line + #thing_lines
+        table.insert(lines, "")
+        table.insert(foldlevels, foldlevel)
+        line = line + 1
+    end
+
+    if remove_trailing then
+        -- remove trailing empty line. maybe this should be done some other way but.....
+        lines[#lines] = nil
+        foldlevels[#foldlevels] = nil
+    end
+
+    return lines, marks, spoilers, things, foldlevels
+end
+
 ---@param array any[]
 ---@param lower integer
 ---@param upper integer

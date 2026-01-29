@@ -13,7 +13,7 @@
 - show errors onscreen instead of printing (and use vim.notify)
 
 ### feature parity with old reddit
-- support commenting (and posting)
+- handle different sorting
 - handle rich:video and similar
 - support contest mode
 - visibly indicate when post is archived
@@ -47,6 +47,7 @@
 - manually update floating window positions instead of relying on global textchange
 - address bug where floating window doen't follow bufpos after window is closed above (could be solved by forced window close and recreate on winresize)
 - show cake day
+- maybe support submitting links
 
 ### codebase maintenance
 - standardize variable/parameter names to make understanding offsets (0 or 1 based, column or byte based, abstract or direct data, etc.)

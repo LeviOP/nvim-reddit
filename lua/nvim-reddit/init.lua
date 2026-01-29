@@ -117,6 +117,12 @@ function M.setup(options)
                 return
             end
 
+            -- local ok, result = pcall(vim.api.nvim_buf_delete, float.buffer, {})
+            -- if not ok then
+            --     vim.print(result)
+            --     return
+            -- end
+
             local row = vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, state.ns, float.mark, {})[1]
             util.array_remove_range(reddit_buf.foldlevels, row + 1, row + 2)
 
@@ -169,6 +175,85 @@ function M.setup(options)
         local path = args.args:gsub("%s+$", "")
         buffer.open(path)
     end, { nargs = "?" })
+
+    vim.api.nvim_create_user_command("RedditSubmit", function()
+        local window = vim.api.nvim_get_current_win()
+        local float = state.win_float_map[window]
+        if not float then
+            print("RedditSubmit can only be called in a reply float!")
+            return
+        end
+
+        local buffer_lines = vim.api.nvim_buf_get_lines(float.buffer, 0, -1, false)
+        local text = table.concat(buffer_lines, "\n")
+
+        local replying_to = float.replying_to
+
+        state.reddit:comment(replying_to.data.name, text, function(result, err)
+            if err then
+                vim.print(err)
+                return
+            end
+            local errors = result.json.errors
+            if #errors ~= 0 then
+                -- FIXME: this sucks
+                vim.schedule(function()
+                    for _, error in ipairs(errors) do
+                        vim.notify("Error submiting comment: \"" .. error[2] .. "\" on field \"" .. error[3] .. "\"", vim.log.levels.ERROR)
+                    end
+                end)
+                return
+            end
+
+            ---@type NvimReddit.Comment|NvimReddit.Listing
+            local parent
+            ---@type integer
+            local foldlevel
+            if replying_to.kind == "t1" then
+                parent = replying_to
+                foldlevel = replying_to.padding / 2
+            else
+                parent = replying_to.comments_listing --[[@as NvimReddit.Listing]]
+                foldlevel = 0
+            end
+
+            vim.schedule(function()
+                local lines, marks, spoilers, things, foldlevels = util.render_appended_things(parent, result.json.data.things --[[@as (NvimReddit.Comment|NvimReddit.More)[] ]], foldlevel, false)
+
+                local reddit_buf = float.reddit_buf
+
+                local row = vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, state.ns, float.mark, {})[1]
+                util.array_remove_range(reddit_buf.foldlevels, row + 1, row + 2)
+
+                vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
+                vim.api.nvim_buf_set_lines(reddit_buf.buffer, row, row + 2, true, {})
+                vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+
+                vim.api.nvim_buf_del_extmark(reddit_buf.buffer, state.ns, float.mark)
+
+                float.close_override = true
+                vim.api.nvim_win_close(float.window, false)
+                float.replying_to.reply_float = nil
+                state.win_float_map[float.window] = nil
+
+                for i, f in ipairs(reddit_buf.floats) do
+                    if f == float then
+                        table.remove(reddit_buf.floats, i)
+                        break
+                    end
+                end
+
+                vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
+                util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, row, row)
+                vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+
+                -- maybe make this an option? regular reddit doesn't do it but i think it's helpful
+                window = vim.api.nvim_get_current_win()
+                local col = vim.api.nvim_win_get_cursor(window)[2]
+                vim.api.nvim_win_set_cursor(window, { row + 1, col })
+            end)
+        end)
+    end, {})
 end
 
 return M
