@@ -3,6 +3,7 @@ local render = require("nvim-reddit.render")
 local state = require("nvim-reddit.state")
 local config = require("nvim-reddit.config")
 
+local ns = state.ns
 local tns = state.tns
 local sns = state.sns
 
@@ -15,6 +16,7 @@ local M = {}
 ---@field mark_thing_map table<integer, NvimReddit.Selectable>
 ---@field selected_mark_id integer|nil
 ---@field images table<string, Image>
+---@field floats NvimReddit.Float[]
 --- 1-indexed
 ---@field foldlevels NvimReddit.FoldLevels
 ---@field spoiler_marks_map table<integer, integer[]>
@@ -52,6 +54,8 @@ function M.open(path, buffer)
             mark_thing_map = {},
             selected_mark_id = nil,
             images = {},
+            floats = {},
+            closing = false,
             foldlevels = {},
             spoiler_marks_map = {},
         }
@@ -83,18 +87,15 @@ function M.open(path, buffer)
             })
         end
 
-        if state.reddit == nil then
-            local reddit_api_path = vim.fs.joinpath(config.data_dir, "api.json")
-            local reddit, err = config.setup_reddit(reddit_api_path, config.platform_resolver())
-            if err ~= nil then
-                print("Error loading Reddit API config:", err)
-                return
-            end ---@cast reddit -?
-            state.reddit = reddit
-        end
+        state.reddit_guard()
 
-        if state.reddit.token == nil then
-            state.reddit:get_access_token()
+        if not state.me then
+            local response, err = state.reddit:fetch("api/v1/me?raw_json=1")
+            if err then
+                vim.print(err)
+                return
+            end ---@cast response -?
+            state.me = response.data
         end
 
         -- Maybe this isn't the best way to do things, but there's no reason
@@ -169,13 +170,63 @@ function M.open(path, buffer)
                 vim.api.nvim_create_autocmd("BufWinEnter", {
                     buffer = buffer,
                     callback = function(args)
+                        local reddit_buf = state.buffers[args.buf]
+
+                        local window = vim.api.nvim_get_current_win()
+                        for _, float in ipairs(reddit_buf.floats) do
+                            local visible, draw = float:is_visible(window)
+                            if visible then
+                                float:draw(window, draw)
+                            end
+                        end
                         vim.schedule(function()
-                            local reddit_buf = state.buffers[args.buf]
                             for _, image in pairs(reddit_buf.images) do
                                 image:render()
                             end
                         end)
                     end,
+                })
+
+                vim.api.nvim_create_autocmd("BufWinLeave", {
+                    buffer = buffer,
+                    callback = function(args)
+                        local reddit_buf = state.buffers[args.buf]
+
+                        for _, float in ipairs(reddit_buf.floats) do
+                            if float.window then
+                                float:hide()
+                            end
+                        end
+                    end
+                })
+
+                vim.api.nvim_create_autocmd({ "BufWritePost", "TextChanged", "TextChangedI", "InsertEnter" }, {
+                    buffer = buffer,
+                    callback = function(args)
+                        local reddit_buf = state.buffers[args.buf]
+                        local window = vim.api.nvim_get_current_win()
+                        for _, float in ipairs(reddit_buf.floats) do
+                            local moved = false
+                            ---@type integer, integer
+                            local row, col = unpack(vim.api.nvim_buf_get_extmark_by_id(args.buf, ns, float.mark, {}))
+                            if float.row ~= row or float.col ~= col then
+                                moved = true
+                                float.row = row
+                                float.col = col
+                            end
+                            local visible, draw = float:is_visible(window)
+                            if visible then
+                                -- this might be stupid
+                                if not float.window or draw or moved then
+                                    float:draw(window, draw)
+                                end
+                            else
+                                if float.window then
+                                    float:hide()
+                                end
+                            end
+                        end
+                    end
                 })
 
                 for _, keymap in ipairs(config.keymaps) do

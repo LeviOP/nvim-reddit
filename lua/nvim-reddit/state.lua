@@ -2,10 +2,12 @@
 
 ---@class NvimReddit.State
 ---@field reddit NvimReddit.RedditClient|nil
+---@field me NvimReddit.Me|nil
 ---@field ns integer
 ---@field tns integer
 ---@field sns integer
 ---@field buffers table<integer, NvimReddit.Buffer>
+---@field win_float_map table<integer, NvimReddit.Float>
 ---@field mode NvimReddit.Mode
 ---@field rolling_spoiler_id integer
 local M = {
@@ -13,8 +15,9 @@ local M = {
     tns = vim.api.nvim_create_namespace("nvim_reddit_things"),
     sns = vim.api.nvim_create_namespace("nvim_reddit_spoilers"),
     buffers = {},
+    win_float_map = {},
     mode = "normal",
-    rolling_spoiler_id = 0,
+    rolling_spoiler_id = 0
 }
 
 local config = require("nvim-reddit.config")
@@ -27,6 +30,8 @@ function M.jump(buffer, dir)
     local cur_row = cur_pos[1] - 1
     local thing_marks = vim.api.nvim_buf_get_extmarks(buffer, M.tns, {0, 0}, {-1, -1}, {})
 
+    -- we are using row, which is 0 indexed, in foldclosed, which is 1 indexed, meaning
+    -- the first closed parent is found (which is good), but could be confusing
     local closest_thing_mark
     local closest_row
     if dir == 1 then
@@ -147,6 +152,22 @@ function M.lualine()
         },
         color = "RedditModeStatus",
     }
+end
+
+function M.reddit_guard()
+    if not M.reddit then
+        local reddit_api_path = vim.fs.joinpath(config.data_dir, "api.json")
+        local reddit, err = config.setup_reddit(reddit_api_path, config.platform_resolver())
+        if err ~= nil then
+            print("Error loading Reddit API config:", err)
+            return
+        end ---@cast reddit -?
+        M.reddit = reddit
+    end
+
+    if not M.reddit.token then
+        M.reddit:get_access_token()
+    end
 end
 
 return M

@@ -5,6 +5,7 @@ local config = require("nvim-reddit.config")
 local util = require("nvim-reddit.util")
 local expand = require("nvim-reddit.expand")
 local richtext = require("nvim-reddit.richtext")
+local float_lib = require("nvim-reddit.float")
 
 local ns = state.ns
 local tns = state.tns
@@ -27,7 +28,7 @@ local function vote(thing, reddit_buf, dir)
     end
     state.reddit:vote(thing.data.name, dir, function(err)
         if err then
-            print("Error voting: " .. err)
+            vim.print("Error voting:", err)
         end
     end)
 
@@ -512,6 +513,47 @@ function M.enter(thing, reddit_buf)
     else
         print("no enter action on this thing")
     end
+end
+
+---@param thing NvimReddit.Selectable
+---@param reddit_buf NvimReddit.Buffer
+function M.reply(thing, reddit_buf)
+    if thing.kind ~= "t1" and thing.kind ~= "t3" then
+        return
+    end ---@cast thing NvimReddit.Replyable
+
+    if thing.reply_float then
+        local parent_window = vim.api.nvim_get_current_win()
+        thing.reply_float:enter(parent_window)
+        return
+    end
+
+    local row
+    if thing.kind == "t3" and thing.open then
+        local _, _, expando_mark_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, ns, thing.expando_mark, { details = true }))
+        local expando_mark_end = expando_mark_details.end_row ---@cast expando_mark_end -?
+        row = expando_mark_end + 1
+    else
+        ---@type integer, _, vim.api.keyset.extmark_details
+        local _, _, thing_mark_details = unpack(vim.api.nvim_buf_get_extmark_by_id(reddit_buf.buffer, tns, reddit_buf.selected_mark_id, { details = true }))
+        local thing_mark_end = thing_mark_details.end_row ---@cast thing_mark_end -?
+        row = thing_mark_end + 1
+    end
+
+    local col = thing.kind == "t1" and thing.padding + 2 or 0
+
+    local status_lines = {"", (" "):rep(col) .. "Speaking as: " .. state.me.name}
+    for _ = 1, #status_lines do
+        table.insert(reddit_buf.foldlevels, row, col / 2)
+    end
+    vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
+    vim.api.nvim_buf_set_lines(reddit_buf.buffer, row - 1, row - 1, true, status_lines)
+    vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
+
+    local float = float_lib.new(reddit_buf, row, col, thing)
+
+    table.insert(reddit_buf.floats, float)
+    thing.reply_float = float
 end
 
 return M

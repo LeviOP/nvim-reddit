@@ -991,6 +991,21 @@ function M.listing(listing, endpoint)
     ---@type NvimReddit.FoldLevels
     local foldlevels = {}
     local line = 0
+
+    -- when there are no children, show this default error
+    if #listing.data.children == 0 then
+        lines[1] = "there doesn't seem to be anything here"
+        marks[1] = {
+            details = {
+                hl_group = "RedditError",
+            },
+            line = 0,
+            start_col = 0,
+            end_col = #lines[1],
+        }
+        return lines, marks, spoilers, things, {0}
+    end
+
     for i, thing in ipairs(listing.data.children) do
         local thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels
         if thing.kind == "t1" then
@@ -1048,7 +1063,6 @@ function M.listing(listing, endpoint)
                 thing.contents = "image"
             else
                 thing.contents = "link"
-                print("assuming this is a link:", contents_data.title)
             end
 
             thing_lines, thing_style_marks, thing_spoilers, thing_marks, thing_foldlevels = M.link(thing)

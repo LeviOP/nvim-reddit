@@ -10,6 +10,10 @@
 ---| NvimReddit.Comment
 ---| NvimReddit.Link
 
+---@alias NvimReddit.Replyable
+---| NvimReddit.Comment
+---| NvimReddit.Link
+
 ---@alias NvimReddit.Selectable
 ---| NvimReddit.Comment
 ---| NvimReddit.Link
@@ -30,6 +34,7 @@
 ---@field mark integer|nil
 ---@field time_ago string|nil
 ---@field time_ago_edited string|nil
+---@field reply_float NvimReddit.Float|nil
 
 ---@class (exact) NvimReddit.Link
 ---@field data NvimReddit.LinkData
@@ -47,6 +52,7 @@
 ---@field gallery_item_line_count integer|nil
 ---@field player_job vim.SystemObj|nil
 ---@field mark integer|nil
+---@field reply_float NvimReddit.Float|nil
 
 ---@alias NvimReddit.LinkContents
 ---|"image"
@@ -486,3 +492,68 @@
 ---@field id string
 ---@field name string
 ---@field parent_id string
+
+---@class (exact) NvimReddit.Me
+---@field is_employee boolean
+---@field seen_layout_switch boolean
+---@field has_visited_new_profile boolean
+---@field pref_no_profanity boolean
+---@field has_external_account boolean
+---@field pref_geopopular string
+---@field seen_redesign_modal boolean
+---@field pref_show_trending boolean
+---@field subreddit unknown
+---@field pref_show_presence boolean
+---@field snoovatar_img string
+---@field snoovatar_size number[]
+---@field gold_expiration null
+---@field has_gold_subscription boolean
+---@field is_sponsor boolean
+---@field num_friends number
+---@field features unknown
+---@field can_edit_name boolean
+---@field verified boolean
+---@field pref_autoplay boolean
+---@field coins number
+---@field has_paypal_subscription boolean
+---@field has_subscribed_to_premium boolean
+---@field id string
+---@field has_stripe_subscription boolean
+---@field oauth_client_id string
+---@field can_create_subreddit boolean
+---@field over_18 boolean
+---@field is_gold boolean
+---@field is_mod boolean
+---@field awarder_karma number
+---@field suspension_expiration_utc null
+---@field has_verified_email boolean
+---@field is_suspended boolean
+---@field pref_video_autoplay boolean
+---@field has_android_subscription boolean
+---@field in_redesign_beta boolean
+---@field icon_img string
+---@field pref_nightmode boolean
+---@field awardee_karma number
+---@field hide_from_robots boolean
+---@field password_set boolean
+---@field link_karma number
+---@field force_password_reset boolean
+---@field total_karma number
+---@field seen_give_award_tooltip boolean
+---@field inbox_count number
+---@field seen_premium_adblock_modal boolean
+---@field pref_top_karma_subreddits boolean
+---@field pref_show_snoovatar boolean
+---@field name string
+---@field pref_clickgadget number
+---@field created number
+---@field gold_creddits number
+---@field created_utc number
+---@field has_ios_subscription boolean
+---@field pref_show_twitter boolean
+---@field in_beta boolean
+---@field comment_karma number
+---@field accept_followers boolean
+---@field has_subscribed boolean
+---@field linked_identities any[]
+---@field seen_subreddit_chat_ftux boolean

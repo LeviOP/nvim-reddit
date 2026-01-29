@@ -57,6 +57,7 @@ end
 function M.get_window_text_width(win)
     local width = vim.api.nvim_win_get_width(win)
 
+    --FIXME: use getwininfo().textoff
     -- local foldcol = vim.wo[win].foldcolumn
     -- local signcol = vim.wo[win].signcolumn
     local number = vim.wo[win].number and 1 or 0

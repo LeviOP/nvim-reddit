@@ -2,6 +2,14 @@
 ---@field score_margin integer
 ---@field max_line_length integer
 
+---@class NvimReddit.Config.Reply
+---@field float NvimReddit.Config.Reply.Float
+
+---@class NvimReddit.Config.Reply.Float
+---@field listed boolean
+---@field scratch boolean
+---@field options table<string, any>
+
 ---@class NvimReddit.Config
 ---@field data_dir string
 ---@field platform_resolver fun(): string
@@ -17,6 +25,7 @@
 ---@field set_topline_on_expand boolean
 ---@field max_image_height_window_percentage integer
 ---@field post_mode_auto_open boolean
+---@field reply NvimReddit.Config.Reply
 local M = {}
 
 ---@alias NvimReddit.Keymap { [1]: string, [2]: string, [3]: fun(thing: NvimReddit.Selectable, reddit_buf: NvimReddit.Buffer) }
@@ -133,6 +142,7 @@ function M.defaults()
             {"n", "gc", actions.open_context},
             {"n", "gC", actions.open_full_context},
             {"n", "<CR>", actions.enter},
+            {"n", "o", actions.reply}
         },
         spacing = {
             score_margin = 6,
@@ -158,6 +168,26 @@ function M.defaults()
         set_topline_on_expand = true,
         max_image_height_window_percentage = 50,
         post_mode_auto_open = true,
+        reply = {
+            float = {
+                listed = true,
+                scratch = false,
+                options = {
+                    number = false,
+                    relativenumber = false,
+                    cursorline = false,
+                    cursorcolumn = false,
+                    spell = false,
+                    list = false,
+                    fillchars = "eob: ",
+                    winhighlight = "EndOfBuffer:",
+                    signcolumn = "auto",
+                    foldcolumn = "0",
+                    colorcolumn = "",
+                    statuscolumn = "",
+                },
+            },
+        },
     }
     return defaults
 end

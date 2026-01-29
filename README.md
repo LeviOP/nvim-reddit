@@ -43,9 +43,14 @@
 - handle blockquote spoiler (not spoilered in new reddit)
 - add mark/hl_group for gallery caption
 - display polls (there is no way to vote, but you can get results after voting on official client)
+- guess better reason for no children (reddit private account)
+- manually update floating window positions instead of relying on global textchange
+- address bug where floating window doen't follow bufpos after window is closed above (could be solved by forced window close and recreate on winresize)
+- show cake day
 
 ### codebase maintenance
 - standardize variable/parameter names to make understanding offsets (0 or 1 based, column or byte based, abstract or direct data, etc.)
 - use style linter
 - maybe make separate wrapped type for state stored on things to reduce confusion
 - further collapse some mark insertion in richtext rendering
+- use strict indexing everywhere
