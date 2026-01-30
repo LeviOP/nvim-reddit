@@ -145,6 +145,7 @@ function M.open(path, buffer)
                 local comments = response.data[2]
 
                 link_listing.data.children[1].comments_listing = comments
+                comments.comments_for_link = link_listing.data.children[1] --[[@as NvimReddit.Link]]
 
                 local lines, marks, spoilers, things, foldlevels = render.listing(link_listing, endpoint)
                 util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, 0)

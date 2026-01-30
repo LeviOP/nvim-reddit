@@ -23,6 +23,7 @@
 ---@field data NvimReddit.ListingData
 ---@field kind "Listing"
 ---@field show_subreddit boolean|nil
+---@field comments_for_link NvimReddit.Link|nil
 
 ---@class (exact) NvimReddit.Comment
 ---@field data NvimReddit.CommentData

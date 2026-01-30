@@ -13,6 +13,7 @@
 - show errors onscreen instead of printing (and use vim.notify)
 
 ### feature parity with old reddit
+- delete shit on buffer reload
 - handle different sorting
 - handle rich:video and similar
 - support contest mode

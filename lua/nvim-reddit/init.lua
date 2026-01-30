@@ -205,6 +205,9 @@ function M.setup(options)
                 return
             end
 
+            -- HACK: this is incredibly stupid!
+            local listing_empty = false
+
             ---@type NvimReddit.Comment|NvimReddit.Listing
             local parent
             ---@type integer
@@ -215,7 +218,11 @@ function M.setup(options)
             else
                 parent = replying_to.comments_listing --[[@as NvimReddit.Listing]]
                 foldlevel = 0
+                if #parent.data.children == 0 then
+                    listing_empty = true
+                end
             end
+
 
             vim.schedule(function()
                 local lines, marks, spoilers, things, foldlevels = util.render_appended_things(parent, result.json.data.things --[[@as (NvimReddit.Comment|NvimReddit.More)[] ]], foldlevel, false)
@@ -244,7 +251,7 @@ function M.setup(options)
                 end
 
                 vim.api.nvim_set_option_value("modifiable", true, { buf = reddit_buf.buffer })
-                util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, row, row)
+                util.draw(reddit_buf, lines, marks, spoilers, things, foldlevels, row, row + (listing_empty and 2 or 0))
                 vim.api.nvim_set_option_value("modifiable", false, { buf = reddit_buf.buffer })
 
                 -- maybe make this an option? regular reddit doesn't do it but i think it's helpful

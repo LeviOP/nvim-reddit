@@ -273,7 +273,7 @@ function M.render_appended_things(top_parent, appended_things, foldlevel, remove
     if top_parent.kind == "t1" then
         id_cache["t1_" .. top_parent.data.id] = top_parent
     else
-        id_cache[top_parent.data.children[1].data.link_id] = top_parent
+        id_cache[top_parent.comments_for_link.data.name] = top_parent
     end
     ---@type (NvimReddit.Comment|NvimReddit.More)[]
     local base_things = {}
